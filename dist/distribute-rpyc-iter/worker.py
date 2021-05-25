@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.8"
+__version__ = "0.9"
 
 import sys
 import json
@@ -45,19 +45,21 @@ class WorkerService(rpyc.Service):
 
     def stop(self):
         global LOCK
+
+        # this func is called more than once sometimes, beware
         if self.proc:
             try:
-                line, self.error = self.proc.communicate(timeout=0.5)
+                self.error = self.proc.communicate(timeout=0.5)[0]
             except subprocess.TimeoutExpired:
+                # this try, and these lines in this order are necessary according to docs
                 self.proc.kill()
-                error = self.proc.communicate()
-                self.error += error
+                self.error += self.proc.communicate()[0] # stderr pipes to stdout, also communicate sets the returncode
             self.rc = self.proc.returncode
             if DEBUG: print('retcode ' + str(self.rc))
 
         self.proc = None
 
-        # this func is called more than once sometimes
+        # this func is called more than once sometimes, beware
         if self.locked:
             self.locked = False
             LOCK.release()
@@ -74,6 +76,10 @@ class WorkerService(rpyc.Service):
 
         # a bit deprecated,
         for k, v in remapDirs.items():
+            # also remap cwd
+            if cwd.startswith(k):
+                cwd = cwd.replace(k, v, 1)
+            # remap dirs in command
             for i, c in enumerate(cmd):
                 if c.startswith(k):
                     c = c.replace(k, v, 1)
@@ -107,9 +113,9 @@ class WorkerService(rpyc.Service):
             self.proc = None"""
         except Exception as e:
             print("Worker General Exception!")
-            self.rc = 6
             self.error = traceback.format_exc()
             self.stop()
+            self.rc = 6 # stop will set rc, but we might want to make this explicit
 
         return True
 
@@ -126,14 +132,16 @@ class WorkerService(rpyc.Service):
     def exposed_getLine(self):
         line = None
         if self.proc:
-            self.rc = self.proc.poll()
             try:
                 line = self.proc.stdout.readline()
             except Exception as e:
                 line = " ERROR WHILE TRYING TO READ THE OUTPUT\n"
                 line += traceback.format_exc()
                 print(line)
-            # force it to be None,
+
+            self.rc = self.proc.poll()
+
+            # force it to be None, as iter in client checks for None
             if not line:
                 line = None
                 self.stop()
