@@ -46,8 +46,13 @@ class WorkerService(rpyc.Service):
     def stop(self):
         global LOCK
         if self.proc:
-            self.rc = self.proc.wait(0.5)
-            self.proc.kill()
+            try:
+                line, self.error = self.proc.communicate(timeout=0.5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                error = self.proc.communicate()
+                self.error += error
+            self.rc = self.proc.returncode
 
         self.proc = None
 
