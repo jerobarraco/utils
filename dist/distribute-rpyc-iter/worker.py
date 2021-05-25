@@ -53,9 +53,11 @@ class WorkerService(rpyc.Service):
                 error = self.proc.communicate()
                 self.error += error
             self.rc = self.proc.returncode
+            if DEBUG: print('retcode ' + str(self.rc))
 
         self.proc = None
 
+        # this func is called more than once sometimes
         if self.locked:
             self.locked = False
             LOCK.release()

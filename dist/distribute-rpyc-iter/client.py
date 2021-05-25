@@ -99,6 +99,10 @@ def run(args, cwd=None):
                 rets = traceback.format_exc()
                 if DEBUG: print(rets)
                 raise e
+            except EOFError as e:
+                rets = traceback.format_exc()
+                if DEBUG: print(rets)
+                raise e
             except Exception as e:
                 rets = traceback.format_exc()
                 if DEBUG: print(rets)
