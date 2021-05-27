@@ -63,7 +63,13 @@ def cmdInList(arg, cmd_list):
 def shouldRunLocally(args):
     global CONF, WORKERS
     if not WORKERS: return True
-    return cmdInList(args[0], CONF.get('runLocally', []))
+    if cmdInList(args[0], CONF.get('runLocally', [])): return True
+
+    # run local files locally
+    for a in args:
+        if a.startswith('@/private') or a.startswith('/private'): return True
+
+    return False
 
 def shouldUseShell(args):
     global CONF
