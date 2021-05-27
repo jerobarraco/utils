@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.9"
+__version__ = "0.10"
 
 import sys
 import json
@@ -100,17 +100,6 @@ class WorkerService(rpyc.Service):
                 # bufsize=1, encoding='utf-8'
                 bufsize=1, universal_newlines=True, encoding='utf-8'
             )
-            """
-        except subprocess.TimeoutExpired as e:
-            print("Worker TIMEOUT!")
-            self.rc = e.returncode
-            self.error = e.stdout
-            self.proc = None
-        except subprocess.CalledProcessError as e:
-            print("Worker Process error!")
-            self.rc = e.returncode
-            self.error = e.stdout
-            self.proc = None"""
         except Exception as e:
             print("Worker General Exception!")
             self.error = traceback.format_exc()
