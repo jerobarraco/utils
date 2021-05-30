@@ -4,8 +4,9 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.10"
+__version__ = "0.11"
 
+import datetime
 import sys
 import json
 import subprocess
@@ -55,7 +56,9 @@ class WorkerService(rpyc.Service):
                 self.proc.kill()
                 self.error += self.proc.communicate()[0] # stderr pipes to stdout, also communicate sets the returncode
             self.rc = self.proc.returncode
-            if DEBUG: print('retcode ' + str(self.rc))
+            if DEBUG:
+                print('retcode ' + str(self.rc))
+                print('stop', datetime.datetime.now())
 
         self.proc = None
 
@@ -88,6 +91,8 @@ class WorkerService(rpyc.Service):
         # to avoid accidentally setting an empty environ
         if not env: env = None
 
+        print("")
+        print('start', datetime.datetime.now())
         print("cmd", str(cmd))
         print("cwd", str(cwd))
         print('env', str(env))

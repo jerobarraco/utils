@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.10"
+__version__ = "0.11"
 
 CONF = {
     "debug": True,
@@ -42,10 +42,11 @@ import sys
 import time
 import traceback
 
-WORK_PATH = os.path.realpath(os.path.dirname(__file__))
-#CONF = json.load(open(os.path.join(WORK_PATH, 'client.json'), 'r'))
+REAL_PATH = os.path.realpath(__file__)
+FNAME = os.path.basename(REAL_PATH)
+WORK_PATH = os.path.dirname(REAL_PATH)
 WORKERS = CONF.get('workers', [])
-# don't go lower than 1, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
+# don't go lower than 2, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
 # will eat the bloat on the server
 COOLDOWN = max(CONF.get('cooldown', 2), 2)
 DEBUG = CONF.get('debug', False)
@@ -144,20 +145,45 @@ def fixLink(args):
     """This is just a test to try to fix linking.
     Will mutate args"""
     is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
-    if not is_clang: return
+    if not is_clang: return False
+
     has_out = False
+    is_link = False
+    #verify the out is an so
     for a in args:
         if a == '-o':
             has_out = True
             continue
         if not has_out: continue
         if a.endswith('.so'):
-            args[0] = '/clang++'.join(args[0].rsplit('/clang', 1))
-        return
+            is_link = True
+            break
+        has_out = False
+
+    if is_link:
+        if args[0][-1] == '_':
+            args[0]=args[0][:-1] #remove the _ , linker needs to not have it
+        if not args[0].endswith('++'):
+            args[0] += '++'
+        #args[0] = '/clang++'.join(args[0].rsplit('/clang', 1))
+    return is_link
+
+def fixSelf(args):
+    """
+    Allows to run a different commands directly from client
+    This will mutate args
+    """
+
+    # notice no os.realpath on args[0]. this ensures is intentional,
+    # and also allow linking to client (shadowing)(the official way to use this script)
+    if args[0] == REAL_PATH: #goes first as it can clash with the one below
+        args.pop(0)
+    # this is the usual usage, avoid looping on itself
+    elif args[0] == __file__:
+        args[0] = args[0] + '_'
 
 def runLocal(args, cwd=None, env=None, shell=False):
     ret = None
-    args[0] = args[0] + '_'
     try:
         ret = subprocess.run(
             args, cwd=cwd, check=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell, encoding='utf-8'
@@ -175,9 +201,10 @@ def runLocal(args, cwd=None, env=None, shell=False):
 def run(args, cwd=None):
     global exitTries, curTime, CONF
 
-    fixLink(args)
+    fixSelf(args)
+    is_link = fixLink(args)
+    run_local = is_link or shouldRunLocally(args)
     use_shell = shouldUseShell(args)
-    run_local = shouldRunLocally(args)
     env = None if not shouldUseEnv(args) else os.environ.copy()
     #if DEBUG:
     #    open(os.path.join(os.path.realpath(os.path.???(__file__)), 'clog'), 'a').write(
