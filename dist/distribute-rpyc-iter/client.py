@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.11"
+__version__ = "0.12"
 
 CONF = {
     "debug": True,
@@ -34,7 +34,6 @@ CONF = {
 }
 
 # ------------------ Here be dragons
-import json
 import os
 import rpyc
 import subprocess
@@ -97,8 +96,13 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
                 host, port = w.rsplit(':', 1)
                 c = rpyc.connect(host, int(port), config=CONCONF)
                 conns[w] = c
+            # Test the connection AND the worker. rpyc raises an exception when trying to execute, not when connecting (at least sometimes).
+            # Note it does this everytime. Just because it was working before doesn't means it still does.
+            if not c.root.ping(): continue
         except Exception as e:
-            if DEBUG: print(traceback.format_exc())
+            if DEBUG:
+                print("Connection to worker failed:")
+                print(traceback.format_exc())
             continue  # try next worker
 
         if not c: continue

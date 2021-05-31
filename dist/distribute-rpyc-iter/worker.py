@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.11"
+__version__ = "0.12"
 
 import datetime
 import sys
@@ -41,8 +41,7 @@ class WorkerService(rpyc.Service):
     def on_disconnect(self, conn):
         # code that runs after the connection has already closed
         # (to finalize the service, if needed)
-        pass
-        self.stop()
+        self.stop() # make sure to stop the process, can happen on certain conditions
 
     def stop(self):
         global LOCK
@@ -147,6 +146,10 @@ class WorkerService(rpyc.Service):
 
     def exposed_getError(self):
         return self.error
+
+    def exposed_ping(self):
+        """Test the connection"""
+        return True
 
 def main():
     port = CONF['port']
