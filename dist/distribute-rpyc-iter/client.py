@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.12"
+__version__ = "0.13"
 
 CONF = {
     "debug": True,
@@ -14,7 +14,8 @@ CONF = {
         "localhost:7700",
         "localhost:7701",
         "localhost:7702",
-        "localhost:7703"
+        "localhost:7703",
+        "localhost:7704"
     ],
     "runLocally": [
         "/clang++",

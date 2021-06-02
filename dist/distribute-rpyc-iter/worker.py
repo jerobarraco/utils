@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.12"
+__version__ = "0.13"
 
 import datetime
 import sys
@@ -24,14 +24,15 @@ remapFiles = CONF.get("remapFiles", {})
 numTasks = CONF.get("numTasks", 1)
 LOCK = threading.Semaphore(int(numTasks))
 DEBUG = CONF.get('debug', False)
-TIMEOUT = CONF.get('timeout', None)
-if TIMEOUT is not None and TIMEOUT < 1: TIMEOUT = None
+TIMEOUT = CONF.get('timeout', 0)
 
 class WorkerService(rpyc.Service):
     proc = None
     rc = 0
     error = ""
     locked = False
+    timer = None
+    stopping = False
 
     def on_connect(self, conn):
         # code that runs when a connection is created
@@ -45,6 +46,13 @@ class WorkerService(rpyc.Service):
 
     def stop(self):
         global LOCK
+        if self.stopping: return
+        self.stopping = True # once stopped no need to stop again (hopefully)
+
+        # first check for the timer. we are not really reentrant
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
 
         # this func is called more than once sometimes, beware
         if self.proc:
@@ -54,10 +62,14 @@ class WorkerService(rpyc.Service):
                 # this try, and these lines in this order are necessary according to docs
                 self.proc.kill()
                 self.error += self.proc.communicate()[0] # stderr pipes to stdout, also communicate sets the returncode
+
+        if self.proc:# self.proc might have been killed by timeout
             self.rc = self.proc.returncode
             if DEBUG:
                 print('retcode ' + str(self.rc))
                 print('stop', datetime.datetime.now())
+            else:
+                sys.stdout.write("-")
 
         self.proc = None
 
@@ -66,7 +78,18 @@ class WorkerService(rpyc.Service):
             self.locked = False
             LOCK.release()
 
+    def timeout(self):
+        if DEBUG:
+            print("TIMEOUT!")
+        else:
+            sys.stdout.write('|')
+        self.stop()
+        # stop will try to set these
+        self.rc = max(self.rc, 13)
+        self.error += "OUTATIME!"
+
     def run(self, cmd, cwd=None, env=None, shell=False):
+        global TIMEOUT, DEBUG
         self.error = ""
         self.rc = 0
         self.proc = None
@@ -90,12 +113,19 @@ class WorkerService(rpyc.Service):
         # to avoid accidentally setting an empty environ
         if not env: env = None
 
-        print("")
-        print('start', datetime.datetime.now())
-        print("cmd", str(cmd))
-        print("cwd", str(cwd))
-        print('env', str(env))
-        print('shell', str(shell))
+        if DEBUG:
+            print("")
+            print('start', datetime.datetime.now())
+            print("cmd", str(cmd))
+            print("cwd", str(cwd))
+            print('env', str(env))
+            print('shell', str(shell))
+        else:
+            sys.stdout.write("-")
+
+        if TIMEOUT > 0 :
+            self.timer = threading.Timer(TIMEOUT, self.timeout)
+            self.timer.start()
 
         self.rc = 0
         try:
@@ -109,6 +139,7 @@ class WorkerService(rpyc.Service):
             self.error = traceback.format_exc()
             self.stop()
             self.rc = 6 # stop will set rc, but we might want to make this explicit
+            # still return True after this, so the client knows we tried to run (but failed)
 
         return True
 
