@@ -33,7 +33,7 @@ class WorkerService(rpyc.Service):
     locked = False
     timer = None
     stopping = False
-
+    start_time = None
     def on_connect(self, conn):
         # code that runs when a connection is created
         # (to init the service, if needed)
@@ -67,7 +67,9 @@ class WorkerService(rpyc.Service):
             self.rc = self.proc.returncode
             if DEBUG:
                 print('retcode ' + str(self.rc))
-                print('stop', datetime.datetime.now())
+                stop = datetime.datetime.now()
+                delta = stop - self.start_time
+                print('stop %s - %s' % (delta, stop))
             else:
                 sys.stdout.write("-")
 
@@ -113,9 +115,10 @@ class WorkerService(rpyc.Service):
         # to avoid accidentally setting an empty environ
         if not env: env = None
 
+        self.start_time = datetime.datetime.now()
         if DEBUG:
             print("")
-            print('start', datetime.datetime.now())
+            print('start', self.start_time)
             print("cmd", str(cmd))
             print("cwd", str(cwd))
             print('env', str(env))
