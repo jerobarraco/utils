@@ -66,12 +66,11 @@ class WorkerService(rpyc.Service):
         if self.proc:# self.proc might have been killed by timeout
             self.rc = self.proc.returncode
             if DEBUG:
-                print('retcode ' + str(self.rc))
-                stop = datetime.datetime.now()
-                delta = stop - self.start_time
-                print('stop %s - %s' % (delta, stop))
+                delta = datetime.datetime.now() - self.start_time
+                print('stop [%i] @ %s' % (self.rc, delta))
             else:
-                sys.stdout.write("-")
+                sys.stdout.write(".")
+                sys.stdout.flush()
 
         self.proc = None
 
@@ -85,6 +84,8 @@ class WorkerService(rpyc.Service):
             print("TIMEOUT!")
         else:
             sys.stdout.write('|')
+            sys.stdout.flush()
+
         self.stop()
         # stop will try to set these
         self.rc = max(self.rc, 13)
@@ -125,6 +126,7 @@ class WorkerService(rpyc.Service):
             print('shell', str(shell))
         else:
             sys.stdout.write("-")
+            sys.stdout.flush()
 
         if TIMEOUT > 0 :
             self.timer = threading.Timer(TIMEOUT, self.timeout)
@@ -138,7 +140,12 @@ class WorkerService(rpyc.Service):
                 bufsize=1, universal_newlines=True, encoding='utf-8'
             )
         except Exception as e:
-            print("Worker General Exception!")
+            if DEBUG:
+                print("Worker General Exception!")
+            else:
+                sys.stdout.write('X')
+                sys.stdout.flush()
+
             self.error = traceback.format_exc()
             self.stop()
             self.rc = 6 # stop will set rc, but we might want to make this explicit

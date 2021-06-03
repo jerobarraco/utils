@@ -11,11 +11,12 @@ CONF = {
     "timeout": 300,
     "cooldown": 2,
     "workers": [
-        "localhost:7700",
-        "localhost:7701",
-        "localhost:7702",
-        "localhost:7703",
-        "localhost:7704"
+        "localhost:7715",
+        "localhost:7717",
+        "localhost:7711",
+        "localhost:7712",
+        "localhost:7718",
+        "localhost:7722"
     ],
     "runLocally": [
         "/clang++",
@@ -148,6 +149,7 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
 
 def fixLink(args):
     """This is just a test to try to fix linking.
+    if the executable is clang, adds ++
     Will mutate args"""
     is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
     if not is_clang: return False
@@ -175,7 +177,9 @@ def fixLink(args):
 
 def fixSelf(args):
     """
-    Allows to run a different commands directly from client
+    Allows to run a different commands directly from client.
+    if the script is the 1st param, it will remove it.
+    if the 1st param is the same file as the script (using a link) it adds a _
     This will mutate args
     """
 
