@@ -1,15 +1,11 @@
 {
 	"host": "localhost",
-	"port": "7700",
-	"numTasks": 7,
-	"debug": true,
+	"port": "7711",
+	"numTasks": 5,
+	"debug": false,
 	"timeout": 180,
 	"remapFiles": {
-		"clang": "clang_",
-		"c++": "clang_",
-		"clang++": "clang_",
-		"cc": "clang_"
-	},
-	"remapDirs": {}
+		"/clang": "/clang_"
+	}
 }
 

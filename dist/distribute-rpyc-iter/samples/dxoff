@@ -1,9 +1,9 @@
 #!/bin/bash
 xpath="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
 
-defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 6
+defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 10
 
-pushd $xpath
+pushd $xpath || exit
 
 if test -f "clang_"; then
   rm ./clang

@@ -1,0 +1,2 @@
+#!/bin/zsh
+ssh -L 7711:localhost:7711 worker-machine

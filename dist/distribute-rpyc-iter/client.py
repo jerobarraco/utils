@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.13"
+__version__ = "0.14"
 
 CONF = {
     "debug": True,
@@ -16,7 +16,8 @@ CONF = {
         "localhost:7711",
         "localhost:7712",
         "localhost:7718",
-        "localhost:7722"
+        "localhost:7722",
+        "localhost:7703"
     ],
     "runLocally": [
         "/clang++",
@@ -116,13 +117,12 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
 
             for line in iter(c.root.getLine, None):
                 # sys.stdout.write(line.decode('utf-8'))
-                sys.stdout.write(line)  # decode happens on worker
+                sys.stdout.write(line)  # decode happens on worker (maybe if encoded decode?)
 
             retc = c.root.getExitCode()
-            if retc:
-                error = c.root.getError()
-                if error:
-                    print(error)
+            error = c.root.getError()
+            if error:
+                print(error)
             return True, retc
         except KeyboardInterrupt as e:
             # Xcode loooves to send this :(
@@ -141,16 +141,17 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
         except Exception as e:
             rets = traceback.format_exc()
             if DEBUG: print(rets)
-            retc = 8
             continue  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway
+            # retc = 8
             # return retc
 
     return False, 0
 
 def fixLink(args):
     """This is just a test to try to fix linking.
-    if the executable is clang, adds ++
+    if the executable is clang, adds ++ and removes _
     Will mutate args"""
+    # only check on clang not clang++ (important because we need to remove _)
     is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
     if not is_clang: return False
 
@@ -170,9 +171,9 @@ def fixLink(args):
     if is_link:
         if args[0][-1] == '_':
             args[0]=args[0][:-1] #remove the _ , linker needs to not have it
-        if not args[0].endswith('++'):
+
+        if not args[0].endswith('++'): # force to use ++
             args[0] += '++'
-        #args[0] = '/clang++'.join(args[0].rsplit('/clang', 1))
     return is_link
 
 def fixSelf(args):
@@ -187,7 +188,7 @@ def fixSelf(args):
     # and also allow linking to client (shadowing)(the official way to use this script)
     if args[0] == REAL_PATH: #goes first as it can clash with the one below
         args.pop(0)
-    # this is the usual usage, avoid looping on itself
+    # this is the usual usage, avoid looping on itself. Notice its only on this case, this helps (android) linking
     elif args[0] == __file__:
         args[0] = args[0] + '_'
 

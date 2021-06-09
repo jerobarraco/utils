@@ -1,6 +1,11 @@
 #!/bin/bash
+# don't make this number much bigger than the actual number of possible concurrent tasks on workers, otherwise you might risk a timeout
+# but do maybe make it 1 bigger to account for overhead starting tasks
+numTasks=29
+# path where your client script is stored
+dpath="/Users/myuser/work/dist/"
+# you dont need to change this probably
 xpath="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
-dpath=" Put here client script path"
 
 pushd $xpath || exit
 
@@ -8,9 +13,16 @@ if test -f "clang_"; then
   rm ./clang
 else
   mv clang clang_
+  rm clang++
+  rm c++
+  rm cc
+  ln -s ./clang_ c++
+  ln -s ./clang_ c++_
+  ln -s ./clang_ cc
+  ln -s ./clang_ cc_
 fi
 
 ln -s "$dpath/client.py" ./clang
-defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 25
+defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks $numTasks
 
 popd

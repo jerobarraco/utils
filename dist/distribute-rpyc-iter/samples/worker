@@ -1,0 +1,18 @@
+#!/bin/bash
+# helper script to start a worker on a remote machine. copy this file to each worker machine.
+# just set your work folder correctly (replace myuser)
+# the script would be the same on all worker machines. except the worker-x.json file (needs to be unique to each worker)
+
+# these 4 lines are only needed on remote workers, comment them out on local
+mkdir -p /Users/myuser/work/
+mount_smbfs //myuser@client-machine/myuser/work/ /Users/myuser/work/
+#used for ios building
+mkdir -p /Users/myuser/Library/Developer/Xcode/
+mount_smbfs //myuser@client-machine/myuser/Library/Developer/Xcode/ /Users/myuser/Library/Developer/Xcode/
+
+pushd /Users/myuser/work/dist/ || exit
+
+# you can remove the "nice" on your machine
+nice ./worker.py ./worker-x.json
+
+popd
