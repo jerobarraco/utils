@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.14"
+__version__ = "0.15"
 
 import datetime
 import sys
@@ -57,17 +57,20 @@ class WorkerService(rpyc.Service):
         # this func is called more than once sometimes, beware
         if self.proc:
             try:
-                self.error = self.proc.communicate(timeout=0.5)[0]
+                # communicate will wait for the process to end (in this case with a timeout)
+                self.error += self.proc.communicate(timeout=0.5)[0]
             except subprocess.TimeoutExpired:
                 # this try, and these lines in this order are necessary according to docs
                 self.proc.kill()
-                self.error += self.proc.communicate()[0] # stderr pipes to stdout, also communicate sets the returncode
+                # communicate will wait for the process to end
+                # stderr pipes to stdout, also communicate sets the returncode
+                self.error += self.proc.communicate()[0]
 
-        if self.proc:# self.proc might have been killed by timeout
+        if self.proc: # self.proc might have been killed by timeout, or by a disconnect
             self.rc = self.proc.returncode
             if DEBUG:
                 delta = datetime.datetime.now() - self.start_time
-                print('stop [%i] @ %s' % (self.rc, delta))
+                print('stop: %i > %s' % (self.rc, delta))
             else:
                 sys.stdout.write(".")
                 sys.stdout.flush()
@@ -88,7 +91,10 @@ class WorkerService(rpyc.Service):
 
         self.stop()
         # stop will try to set these
-        self.rc = max(self.rc, 13)
+        if self.rc is None:
+            self.rc = 14
+        else:
+            self.rc = max(self.rc, 13)
         self.error += "OUTATIME!"
 
     def run(self, cmd, cwd=None, env=None, shell=False):
@@ -96,6 +102,7 @@ class WorkerService(rpyc.Service):
         self.error = ""
         self.rc = 0
         self.proc = None
+        self.stopping = False
         # a bit deprecated, to be able to run things locally.
         for k, v in remapFiles.items():
             c = cmd[0]
@@ -128,7 +135,7 @@ class WorkerService(rpyc.Service):
             sys.stdout.write("-")
             sys.stdout.flush()
 
-        if TIMEOUT > 0 :
+        if TIMEOUT > 0:
             self.timer = threading.Timer(TIMEOUT, self.timeout)
             self.timer.start()
 
@@ -140,17 +147,20 @@ class WorkerService(rpyc.Service):
                 bufsize=1, universal_newlines=True, encoding='utf-8'
             )
         except Exception as e:
+            tb = traceback.format_exc()
             if DEBUG:
                 print("Worker General Exception!")
+                print(tb)
             else:
                 sys.stdout.write('X')
                 sys.stdout.flush()
 
-            self.error = traceback.format_exc()
             self.stop()
             self.rc = 6 # stop will set rc, but we might want to make this explicit
-            # still return True after this, so the client knows we tried to run (but failed)
-
+            # append traceback here as stop might set more errors
+            self.error += tb
+        # still return True after this, so the client knows we tried to run (but failed)
+        # otherwise it will try again
         return True
 
     def exposed_tryRun(self, cmd, cwd=None, env=None, shell=False):
@@ -164,21 +174,21 @@ class WorkerService(rpyc.Service):
         return True
 
     def exposed_getLine(self):
+        if not self.proc: return None
         line = None
-        if self.proc:
-            try:
-                line = self.proc.stdout.readline()
-            except Exception as e:
-                line = " ERROR WHILE TRYING TO READ THE OUTPUT\n"
-                line += traceback.format_exc()
-                print(line)
+        try:
+            line = self.proc.stdout.readline()
+        except Exception as e:
+            line = " ERROR WHILE TRYING TO READ THE OUTPUT\n"
+            line += traceback.format_exc()
+            print(line)
 
-            self.rc = self.proc.poll()
+        self.rc = self.proc.poll()
 
-            # force it to be None, as iter in client checks for None
-            if not line:
-                line = None
-                self.stop()
+        # force it to be None, as iter in client checks for None
+        if not line:
+            line = None
+            self.stop()
 
         return line
 

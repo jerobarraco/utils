@@ -4,20 +4,21 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.14"
+__version__ = "0.15"
 
 CONF = {
     "debug": True,
-    "timeout": 300,
+    "timeout": 180,
     "cooldown": 2,
     "workers": [
         "localhost:7715",
         "localhost:7717",
         "localhost:7711",
-        "localhost:7712",
-        "localhost:7718",
         "localhost:7722",
-        "localhost:7703"
+        "localhost:7723",
+        "localhost:7703",
+        "localhost:7712",
+        "localhost:7718"
     ],
     "runLocally": [
         "/clang++",
@@ -116,8 +117,8 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
             if not executed: continue
 
             for line in iter(c.root.getLine, None):
-                # sys.stdout.write(line.decode('utf-8'))
-                sys.stdout.write(line)  # decode happens on worker (maybe if encoded decode?)
+                # sys.stdout.write(line.decode('utf-8')) # decode happens on worker (maybe if encoded decode?)
+                sys.stdout.write(line)
 
             retc = c.root.getExitCode()
             error = c.root.getError()
@@ -232,7 +233,7 @@ def run(args, cwd=None):
         #ForEnd
         time.sleep(COOLDOWN)
         if TIMEOUT > 0:
-            curTime += 1
+            curTime += COOLDOWN
             if curTime >= TIMEOUT:
                 print("CLIENT TIMEOUT!")
                 return 9
