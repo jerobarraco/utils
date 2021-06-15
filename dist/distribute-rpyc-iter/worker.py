@@ -46,8 +46,10 @@ class WorkerService(rpyc.Service):
 
     def stop(self):
         global LOCK
+        # once stopped no need to stop again (hopefully), avoid problems when re-entering
+        # this function can be called many times, even as a result of this functions
         if self.stopping: return
-        self.stopping = True # once stopped no need to stop again (hopefully)
+        self.stopping = True
 
         # first check for the timer. we are not really reentrant
         if self.timer:
@@ -63,10 +65,9 @@ class WorkerService(rpyc.Service):
                 # this try, and these lines in this order are necessary according to docs
                 self.proc.kill()
                 # communicate will wait for the process to end
-                # stderr pipes to stdout, also communicate sets the returncode
+                # stderr pipes to stdout, also communicate sets the return code
                 self.error += self.proc.communicate()[0]
 
-        if self.proc: # self.proc might have been killed by timeout, or by a disconnect
             self.rc = self.proc.returncode
             if DEBUG:
                 delta = datetime.datetime.now() - self.start_time
@@ -93,8 +94,7 @@ class WorkerService(rpyc.Service):
         # stop will try to set these
         if self.rc is None:
             self.rc = 14
-        else:
-            self.rc = max(self.rc, 13)
+        self.rc = max(self.rc, 13)
         self.error += "OUTATIME!"
 
     def run(self, cmd, cwd=None, env=None, shell=False):
@@ -143,22 +143,19 @@ class WorkerService(rpyc.Service):
         try:
             self.proc = subprocess.Popen(
                 cmd, cwd=cwd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell,
-                # bufsize=1, encoding='utf-8'
-                bufsize=1, universal_newlines=True, encoding='utf-8'
+                bufsize=1, encoding='utf-8', universal_newlines=True
             )
         except Exception as e:
-            tb = traceback.format_exc()
+            self.error += traceback.format_exc()
             if DEBUG:
                 print("Worker General Exception!")
-                print(tb)
+                print(self.error)
             else:
                 sys.stdout.write('X')
                 sys.stdout.flush()
 
             self.stop()
             self.rc = 6 # stop will set rc, but we might want to make this explicit
-            # append traceback here as stop might set more errors
-            self.error += tb
         # still return True after this, so the client knows we tried to run (but failed)
         # otherwise it will try again
         return True
