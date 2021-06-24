@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.17"
+__version__ = "0.18"
 
 CONF = {
     "debug": True,
@@ -13,13 +13,14 @@ CONF = {
     "workers": [
         "localhost:7715",
         "localhost:7717",
-        "localhost:7711",
         "localhost:7722",
-        "localhost:7723",
         "localhost:7703",
+        "localhost:7711",
         "localhost:7712",
-        "localhost:7718"
+        "localhost:7718",
     ],"dontUse":[
+        "localhost:7705",
+        "localhost:7723",
     ],
     "runLocally": [
         "/clang++",
@@ -35,6 +36,7 @@ CONF = {
     "useShell": [
         "-*",
         " List of commands to run using shell, * means all"
+        " shell might be a security issue, and also it might create side effects"
     ]
 }
 
@@ -119,21 +121,21 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
             executed = c.root.tryRun(args, cwd, env, shell)
             if not executed: continue
 
-            for line in iter(c.root.getLine, None):
-                # sys.stdout.write(line.decode('utf-8')) # decode happens on worker (maybe if encoded decode?)
-                sys.stdout.write(line)
+            for out, err in iter(c.root.comm, None):
+                if out: sys.stdout.write(out.decode('utf-8'))
+                if err: sys.stderr.write(err.decode('utf-8'))
+                #sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
 
             retc = c.root.getExitCode()
-            error = c.root.getError()
-            if error:
-                print(error)
             return True, retc
         except KeyboardInterrupt as e:
             # Xcode loooves to send this :(
             rets = traceback.format_exc()
             if DEBUG: print(rets)
+
             exitTries += 1
-            if exitTries > 5: raise e
+            if exitTries > 5:
+                raise e
         except rpyc.AsyncResultTimeout as e:
             rets = traceback.format_exc()
             if DEBUG: print(rets)

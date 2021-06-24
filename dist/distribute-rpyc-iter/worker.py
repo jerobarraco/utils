@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.17"
+__version__ = "0.18"
 
 import datetime
 import sys
@@ -29,9 +29,11 @@ TIMEOUT = CONF.get('timeout', 0)
 class WorkerService(rpyc.Service):
     proc = None
     rc = 0
-    error = ""
+    stop_out = b''
+    stop_err = b''
     locked = False
     timer = None
+    timeout = False
     stopping = False
     start_time = None
     def on_connect(self, conn):
@@ -60,13 +62,17 @@ class WorkerService(rpyc.Service):
         if self.proc:
             try:
                 # communicate will wait for the process to end (in this case with a timeout)
-                self.error += self.proc.communicate(timeout=0.5)[0]
+                o, e = self.proc.communicate(timeout=0.5)
+                self.stop_out += o
+                self.stop_err += e
             except subprocess.TimeoutExpired:
                 # this try, and these lines in this order are necessary according to docs
                 self.proc.kill()
                 # communicate will wait for the process to end
                 # stderr pipes to stdout, also communicate sets the return code
-                self.error += self.proc.communicate()[0]
+                o, e = self.proc.communicate()
+                self.stop_out += o
+                self.stop_err += e
 
             self.rc = self.proc.returncode
             if DEBUG:
@@ -83,23 +89,23 @@ class WorkerService(rpyc.Service):
             self.locked = False
             LOCK.release()
 
-    def timeout(self):
+        return
+
+    def onTimeout(self):
+        print("timeout")
         if DEBUG:
             print("TIMEOUT!")
         else:
             sys.stdout.write('|')
             sys.stdout.flush()
-
-        self.stop()
-        # stop will try to set these
-        if self.rc is None:
-            self.rc = 14
-        self.rc = max(self.rc, 13)
-        self.error += "OUTATIME!"
+        # avoid thread weirdness, loosing output, and let the process finish if it happens to finish by next read
+        # comm will check and kill
+        self.timeout = True
 
     def run(self, cmd, cwd=None, env=None, shell=False):
         global TIMEOUT, DEBUG
-        self.error = ""
+        self.stop_out = b""
+        self.stop_err = b""
         self.rc = 0
         self.proc = None
         self.stopping = False
@@ -136,26 +142,27 @@ class WorkerService(rpyc.Service):
             sys.stdout.flush()
 
         if TIMEOUT > 0:
-            self.timer = threading.Timer(TIMEOUT, self.timeout)
+            self.timer = threading.Timer(TIMEOUT, self.onTimeout)
             self.timer.start()
 
         self.rc = 0
         try:
             self.proc = subprocess.Popen(
-                cmd, cwd=cwd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell,
-                bufsize=1, encoding='utf-8', universal_newlines=True
+                cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env, shell=shell,
+                #cmd, cwd=cwd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell,
+                # encoding='utf-8', bufsize=1,universal_newlines=True #bufsize is only supported in text mode (encoding)
             )
         except Exception as e:
-            self.error += traceback.format_exc()
+            self.stop_err += traceback.format_exc().encode('utf-8')
             if DEBUG:
-                print("Worker General Exception!")
-                print(self.error)
+                print("\nWorker General Exception!\n")
+                print(self.stop_err)
             else:
                 sys.stdout.write('X')
                 sys.stdout.flush()
 
             self.stop()
-            self.rc = 6 # stop will set rc, but we might want to make this explicit
+            # self.rc = 6 # stop will set rc, but we might want to make this explicit
         # still return True after this, so the client knows we tried to run (but failed)
         # otherwise it will try again
         return True
@@ -163,43 +170,54 @@ class WorkerService(rpyc.Service):
     def exposed_tryRun(self, cmd, cwd=None, env=None, shell=False):
         global LOCK
         if not LOCK.acquire(False):
-            self.error = "im busy"
+            self.stop_err = b"\ni'm busy\n"
             return False
 
         self.locked = True
         self.run(cmd, cwd, env, shell)
         return True
 
-    def exposed_getLine(self):
-        if not self.proc: return None
-        line = None
+    def exposed_comm(self):
+        stdout = b''
+        stderr = b''
+        if not self.proc:
+            if self.stop_out or self.stop_err:
+                stdout = self.stop_out
+                stderr = self.stop_err
+                self.stop_out = b''
+                self.stop_err = b''
+                return stdout, stderr
+            else:
+                return None
+
         try:
-            line = self.proc.stdout.readline()
-        except Exception as e:
-            line = " ERROR WHILE TRYING TO READ THE OUTPUT\n"
-            line += traceback.format_exc()
-            print(line)
+            # communicate will wait for the process to end (in this case with a timeout)
+            stdout, stderr = self.proc.communicate(timeout=0.25) #TODO maybe parameter this?
+        except subprocess.TimeoutExpired:
+            pass
 
-        self.rc = self.proc.poll()
+        # handle timeout and dead process
+        if self.timeout or (not self.proc) or (self.proc.returncode is not None):
+            self.stop() # will fill stop_*
+            stderr += self.stop_err
+            stdout += self.stop_out
+            self.stop_err = b''
+            self.stop_out = b''
+            if self.timeout:
+                stderr += b"\nOUTATIME!\n"
 
-        # force it to be None, as iter in client checks for None
-        if not line:
-            line = None
-            self.stop()
-
-        return line
+        return stdout, stderr
 
     def exposed_getExitCode(self):
         return self.rc
-
-    def exposed_getError(self):
-        return self.error
 
     def exposed_ping(self):
         """Test the connection"""
         return True
 
+
 def main():
+    global TIMEOUT, numTasks
     port = CONF['port']
     host = CONF['host']
     print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s" % (host, port, numTasks, TIMEOUT))
