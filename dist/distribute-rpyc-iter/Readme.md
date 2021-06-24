@@ -24,6 +24,9 @@ for each worker machine (including local machine)
 * create a worker conf file (worker-xx.json) and edit (see samples)
 * create a connect script and edit (see samples) (except local machine)
 
+# tweak smb for fastness
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool TRUE
+
 # To run
 on each worker machine (including yours)
 * connect via ssh: ssh -L 7XXX:localhost:7XXX cf-mac-XXX  (except on local machine) (or use the connect script)

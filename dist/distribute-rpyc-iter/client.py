@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.16"
+__version__ = "0.17"
 
 CONF = {
     "debug": True,
@@ -19,7 +19,7 @@ CONF = {
         "localhost:7703",
         "localhost:7712",
         "localhost:7718"
-    ],"l":[
+    ],"dontUse":[
     ],
     "runLocally": [
         "/clang++",
@@ -105,12 +105,12 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
             # Note it does this everytime. Just because it was working before doesn't means it still does.
             if not c.root.ping(): continue
         except ConnectionRefusedError as e:
-            continue
+            continue # try next worker
         except Exception as e:
             if DEBUG:
                 print("Connection to worker failed:")
                 print(traceback.format_exc())
-            continue  # try next worker
+            continue # try next worker
 
         if not c: continue
 
@@ -190,14 +190,16 @@ def fixSelf(args):
 
     # notice no os.realpath on args[0]. this ensures is intentional,
     # and also allow linking to client (shadowing)(the official way to use this script)
-    if args[0] == REAL_PATH: #goes first as it can clash with the one below
+    # #goes first as it can clash with the one below
+    #if args[0] == REAL_PATH:
+    if os.path.basename(args[0]) == FNAME: # this one is safer, you can rename your client.py otherwise
         args.pop(0)
-    # this is the usual usage, avoid looping on itself. Notice its only on this case, this helps (android) linking
-    elif args[0] == __file__:
+    # this is the usual usage, avoid looping on itself.
+    #elif args[0] == __file__:# isnt this like always true? (Notice it's only on this case, this helps (android) linking, is this still true?)
+    else: # this is safer, specially in windows, where we might want to use pyinstaller to shadow an exe
         args[0] = args[0] + '_'
 
 def runLocal(args, cwd=None, env=None, shell=False):
-    ret = None
     try:
         ret = subprocess.run(
             args, cwd=cwd, check=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell, encoding='utf-8'
@@ -221,8 +223,8 @@ def run(args, cwd=None):
     use_shell = shouldUseShell(args)
     env = None if not shouldUseEnv(args) else os.environ.copy()
     #if DEBUG:
-    #    open(os.path.join(os.path.realpath(os.path.???(__file__)), 'clog'), 'a').write(
-    #        "command %s\ncwd %s\nenv %s\nlocal %s\n" % (args, env, cwd, run_local)
+    #    open(os.path.join(WORK_PATH, 'clog'), 'a').write(
+    #        "fname%s\ncommand %s\ncwd %s\nenv %s\nlocal %s\nshell %s\n" % (FNAME, args, cwd, env, run_local, use_shell)
     #    )
 
     if run_local:
