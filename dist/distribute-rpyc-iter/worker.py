@@ -25,6 +25,7 @@ numTasks = CONF.get("numTasks", 1)
 LOCK = threading.Semaphore(int(numTasks))
 DEBUG = CONF.get('debug', False)
 TIMEOUT = CONF.get('timeout', 0)
+BUFF_SECS = CONF.get('buff_secs', 0.5)
 
 class WorkerService(rpyc.Service):
     proc = None
@@ -192,7 +193,7 @@ class WorkerService(rpyc.Service):
 
         try:
             # communicate will wait for the process to end (in this case with a timeout)
-            stdout, stderr = self.proc.communicate(timeout=0.25) #TODO maybe parameter this?
+            stdout, stderr = self.proc.communicate(timeout=BUFF_SECS)
         except subprocess.TimeoutExpired:
             pass
 
