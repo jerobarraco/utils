@@ -19,7 +19,8 @@ CONF = {
         "localhost:7712",
         "localhost:7718",
     ],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
-
+        "localhost:7705",
+        "localhost:7723",
     ],
     # List of commands to run locally, * means all
     "runLocally": [

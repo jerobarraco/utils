@@ -1,0 +1,15 @@
+{
+	"debug": true,
+	"timeout": 300,
+	"runLocally": [
+		"clang++"
+	],
+	"workers": [
+		"localhost:7700",
+		"127.0.0.1:7701",
+		"127.0.0.1:7702",
+		"127.0.0.1:7703"
+	],
+	"sendEnv": [],
+	"useShell": []
+}

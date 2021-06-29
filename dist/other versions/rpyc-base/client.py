@@ -1,0 +1,90 @@
+#!/usr/local/bin/python3
+# coding: utf-8
+
+__author__ = "Jeronimo Barraco-Marmol"
+__copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
+__license__ = "GPL V3"
+__version__ = "0.4"
+
+import sys
+import time
+import os
+import traceback
+import json
+import subprocess
+import rpyc
+
+WORKERS = '/Users/jeronimo/work/aladdin/distribute/'
+conf = json.load(open(os.path.join(WORKERS, 'client.json'), 'r'))
+workers = conf.get('workers', [])
+# don't go lower than 1, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
+# will eat the bloat on the server
+cooldown = max(conf.get('cooldown', 1), 1)
+DEBUG = conf.get('debug', False)
+TIMEOUT = conf.get('timeout', 0)
+curTime = 0
+exitTries = 0
+
+def cmdInList(arg, list):
+    for cmd in list:
+        if arg.endswith(cmd): return True
+    return False
+
+def shouldRunLocally(args):
+    if not workers: return True
+    return cmdInList(args[0], conf.get('runLocally', []))
+
+def run(args, cwd=None):
+    global exitTries, curTime
+
+    use_shell = cmdInList(args[0], conf.get('useShell', []))
+
+    env = "" if not cmdInList(args[0], conf.get('sendEnv', [])) else os.environ.copy()
+
+    if shouldRunLocally(args):
+        args[0] = args[0] + '_'
+        if DEBUG: print("running locally")
+        ret = subprocess.run(args, cwd=cwd, check=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=use_shell)
+        return ret.returncode, ret.stdout
+
+    conns = {}
+    busy = True
+    while busy:
+        for w in workers:
+            rets = ''
+            retc = 0
+            try:
+                c = conns.get(w, None)
+                if c is None:
+                    host, port = w.rsplit(':', 1)
+                    c = rpyc.connect(host, int(port))
+                    conns[w] = c
+            except Exception as e:
+                if DEBUG: print(traceback.format_exc())
+                continue # try next worker
+
+            try:
+                executed, retc, rets = c.root.tryRun(args, cwd, env, use_shell)
+                if executed:
+                    return retc, rets
+            except KeyboardInterrupt as e:
+                # wtf xcode keeps sending ctrlC
+                exitTries += 1
+                if exitTries > 5: raise e
+            except Exception as e:
+                rets = traceback.format_exc()
+                retc = 8
+                print(rets)
+                continue # hotfix, why?, doesnt matter, rpyc might fix this. it will still timeout on too many retries
+                return retc, rets
+
+        time.sleep(cooldown)
+        if TIMEOUT > 0:
+            curTime += 1
+            if curTime >= TIMEOUT:
+                return 9, "CLIENT TIMEOUT!"
+
+if __name__ == "__main__":
+    retc, rets = run(sys.argv, os.getcwd())
+    sys.stdout.write(rets.decode('utf-8'))
+    exit(retc)

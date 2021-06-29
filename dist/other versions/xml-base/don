@@ -1,0 +1,15 @@
+#!/bin/bash
+xpath="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
+dpath="/Users/user/distribute/"
+
+pushd $xpath
+if test -f "clang_"; then
+    rm ./clang
+else
+  mv clang clang_
+fi
+
+ln -s "$dpath/client.py" ./clang
+defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 25
+
+popd

@@ -1,0 +1,20 @@
+#!/bin/bash
+dpath="/Users/user/dist/"
+
+#android
+apath="/usr/local/share/android-sdk/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/bin/"
+pushd $apath || exit
+
+
+if test -f "clang_"; then
+  rm ./clang
+else
+  mv clang clang_
+fi
+# make sure clang++ is ok
+rm clang++
+cp ./clang_ ./clang++
+
+ln -s "$dpath/client.py" ./clang
+
+

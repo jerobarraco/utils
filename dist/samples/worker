@@ -15,7 +15,7 @@ mount_smbfs //worker@mymachine/worker/work/ /Users/myuser/work/
 # this one is used for ios build
 mount_smbfs //worker@mymachine/myuser/Library/Developer/Xcode/ /Users/myuser/Library/Developer/Xcode/
 
-# sshfs using fuse is not working properly atm, and might lock you out due to too many failed attempts, needs more testing
+# sshfs using fuse is not working properly atm, it might trigger too many failed attempts, needs more testing
 #sshfs myuser@mymachine:work ./work
 #sshfs myuser@mymachine:Library/Developer/Xcode ./Library/Developer/Xcode
 # end of remote worker lines
