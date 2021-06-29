@@ -10,14 +10,15 @@ CONF = {
     "debug": True,
     "timeout": 180,
     "cooldown": 2,
+    "fixAndroid": False, # Small optimization to speed up by skipping some android fixes
     "workers": [
         "localhost:7715",
         "localhost:7717",
         "localhost:7722",
-        "localhost:7703",
         "localhost:7711",
         "localhost:7712",
         "localhost:7718",
+        "localhost:7703",
     ],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
         "localhost:7705",
         "localhost:7723",
@@ -48,13 +49,14 @@ FNAME = os.path.basename(REAL_PATH)
 WORK_PATH = os.path.dirname(REAL_PATH)
 WORKERS = CONF.get('workers', [])
 # don't go lower than 2, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
-# will eat the bloat on the server
+# will bloat on the server
 COOLDOWN = max(CONF.get('cooldown', 2), 2)
 DEBUG = CONF.get('debug', False)
 TIMEOUT = int(CONF.get('timeout', 0))
 CONCONF = {
     "sync_request_timeout": None if TIMEOUT < 1 else TIMEOUT
 }
+FIX_ANDROID = CONF.get('fixAndroid', False)
 
 def cmdInList(arg, cmd_list):
     if '*' in cmd_list: return True
@@ -145,7 +147,7 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False):
         # return False, retc
 
 def runInWorkers(args, cwd=None, env=None, shell=False):
-    global exitTries, conns, curTime
+    global WORKERS
     for w in WORKERS:
         c = getConnection(w)
         if not c: continue
@@ -160,7 +162,7 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
 def fixLink(args):
     """This is just to try to fix linking (on android)
     if the executable is clang, adds ++ and removes _
-    This depends on you using clang as the compiler (and not clang++)
+    This depends on you using (forcing) 'clang' as the compiler (and not clang++)
     Will mutate args"""
 
     # only check on clang not clang++ (important because we need to remove _)
@@ -219,7 +221,7 @@ def runLocal(args, cwd=None, env=None, shell=False):
     except subprocess.CalledProcessError as e:
         print(e.output)
         print(traceback.format_exc())
-        return -10
+        return e.returncode
     except Exception as e:
         print(traceback.format_exc())
         return -10
@@ -228,7 +230,7 @@ def run(args, cwd=None):
     global exitTries, curTime, CONF
 
     fixSelf(args)
-    is_link = fixLink(args)
+    is_link = FIX_ANDROID and fixLink(args)
     run_local = is_link or shouldRunLocally(args)
     use_shell = shouldUseShell(args)
     env = None if not shouldUseEnv(args) else os.environ.copy()
