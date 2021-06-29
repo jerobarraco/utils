@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.19"
+__version__ = "0.20"
 
 CONF = {
     "debug": True,
@@ -85,6 +85,58 @@ def shouldUseEnv(args):
     global CONF
     return cmdInList(args[0], CONF.get('useEnv', []))
 
+def fixLink(args):
+    """This is just to try to fix linking (on android)
+    if the executable is clang, adds ++ and removes _
+    This depends on you using (forcing) 'clang' as the compiler (and not clang++)
+    Will mutate args"""
+
+    # only check on clang not clang++ (important because we need to remove _)
+    # this means, you should avoid to shadow/override clang++
+    is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
+    if not is_clang: return False
+
+    has_out = False
+    is_link = False
+    #verify the out is an so
+    for a in args:
+        if a == '-o':
+            has_out = True
+            continue
+        if not has_out: continue
+        if a.endswith('.so'):
+            is_link = True
+            break
+        has_out = False
+
+    if is_link:
+        if args[0][-1] == '_':
+            args[0]=args[0][:-1] #remove the _ , linker needs to not have it (really)
+
+        if not args[0].endswith('++'): # force to use ++
+            args[0] += '++'
+    return is_link
+
+def fixSelf(args):
+    """
+    Allows to run a different commands directly from client.
+    if the script is the 1st param, it will remove it.
+    if the 1st param is the same file as the script (using a link) it adds a _
+    This will mutate args
+    """
+
+    # notice no os.realpath on args[0]. this is intentional,
+    # and also allows linking to client (shadowing) (the official way to use this script)
+    # #goes first as it can clash with the one below
+    #if args[0] == REAL_PATH:
+    # this one is safer, means that if its called by something with the same file name (client.py), regardless of the folder.
+    # you can rename your client.py otherwise
+    if os.path.basename(args[0]) == FNAME:
+        args.pop(0)
+    else: # this is safer, specially in windows, where we might want to use pyinstaller to shadow an exe
+        # this is the usual usage, avoid looping on itself.
+        args[0] = args[0] + '_'
+
 conns = {}
 curTime = 0
 exitTries = 0
@@ -158,58 +210,6 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
             return True, retc
 
     return False, -1 # could not execute
-
-def fixLink(args):
-    """This is just to try to fix linking (on android)
-    if the executable is clang, adds ++ and removes _
-    This depends on you using (forcing) 'clang' as the compiler (and not clang++)
-    Will mutate args"""
-
-    # only check on clang not clang++ (important because we need to remove _)
-    # this means, you should avoid to shadow/override clang++
-    is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
-    if not is_clang: return False
-
-    has_out = False
-    is_link = False
-    #verify the out is an so
-    for a in args:
-        if a == '-o':
-            has_out = True
-            continue
-        if not has_out: continue
-        if a.endswith('.so'):
-            is_link = True
-            break
-        has_out = False
-
-    if is_link:
-        if args[0][-1] == '_':
-            args[0]=args[0][:-1] #remove the _ , linker needs to not have it (really)
-
-        if not args[0].endswith('++'): # force to use ++
-            args[0] += '++'
-    return is_link
-
-def fixSelf(args):
-    """
-    Allows to run a different commands directly from client.
-    if the script is the 1st param, it will remove it.
-    if the 1st param is the same file as the script (using a link) it adds a _
-    This will mutate args
-    """
-
-    # notice no os.realpath on args[0]. this is intentional,
-    # and also allows linking to client (shadowing) (the official way to use this script)
-    # #goes first as it can clash with the one below
-    #if args[0] == REAL_PATH:
-    # this one is safer, means that if its called by something with the same file name (client.py), regardless of the folder.
-    # you can rename your client.py otherwise
-    if os.path.basename(args[0]) == FNAME:
-        args.pop(0)
-    else: # this is safer, specially in windows, where we might want to use pyinstaller to shadow an exe
-        # this is the usual usage, avoid looping on itself.
-        args[0] = args[0] + '_'
 
 def runLocal(args, cwd=None, env=None, shell=False):
     try:
