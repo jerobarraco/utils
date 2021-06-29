@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.18"
+__version__ = "0.19"
 
 import datetime
 import sys

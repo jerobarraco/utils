@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.18"
+__version__ = "0.19"
 
 CONF = {
     "debug": True,
@@ -18,25 +18,19 @@ CONF = {
         "localhost:7711",
         "localhost:7712",
         "localhost:7718",
-    ],"dontUse":[
-        "localhost:7705",
-        "localhost:7723",
+    ],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
+
     ],
+    # List of commands to run locally, * means all
     "runLocally": [
-        "/clang++",
+        "/clang++", # for android linking
         "/client.py",
-        "/emcc++",
-        " List of commands to run locally, * means all"
     ],
+    # " List of commands to run using the current environment, * means all"
     "useEnv": [
-        '-*',
-        '/clang++',
-        " List of commands to run using the current environment, * means all"
     ],
+    # " List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
     "useShell": [
-        "-*",
-        " List of commands to run using shell, * means all"
-        " shell might be a security issue, and also it might create side effects"
     ]
 }
 
@@ -91,73 +85,85 @@ def shouldUseEnv(args):
 conns = {}
 curTime = 0
 exitTries = 0
+def getConnection(address):
+    global conns, CONCONF
+    c = None
+    try:
+        c = conns.get(address, None)
+        if not c: # create a new connection if it doesn't exists
+            host, port = address.rsplit(':', 1)
+            c = rpyc.connect(host, int(port), config=CONCONF)
+            conns[address] = c
+        # Test the connection AND the worker. rpyc raises an exception when trying to execute, not when connecting (at least sometimes).
+        # Note it does this everytime. Just because it was working before doesn't means it still does.
+        if not c.root.ping(): return None
+    except ConnectionRefusedError as e:
+        return None  # try next worker
+    except Exception as e:
+        if DEBUG:
+            print("Connection to worker failed:")
+            print(traceback.format_exc())
+        return None  # try next worker
+    return c
+
+def tryRunInAWorker(c, args, cwd=None, env=None, shell=False):
+    global exitTries
+    retc = -1
+    try:
+        executed = c.root.tryRun(args, cwd, env, shell)
+        if not executed: return False, -1
+
+        for out, err in iter(c.root.comm, None):
+            if out: sys.stdout.write(out.decode('utf-8'))
+            if err: sys.stderr.write(err.decode('utf-8'))
+            # sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
+
+        retc = c.root.getExitCode()
+        return True, retc
+    except KeyboardInterrupt as e:
+        # Xcode loooves to send this :(
+        rets = traceback.format_exc()
+        if DEBUG: print(rets)
+
+        exitTries += 1
+        if exitTries > 5:
+            raise e
+    except rpyc.AsyncResultTimeout as e:
+        rets = traceback.format_exc()
+        if DEBUG: print(rets)
+        raise e
+    except EOFError as e:
+        rets = traceback.format_exc()
+        if DEBUG: print(rets)
+        raise e
+    except Exception as e:
+        rets = traceback.format_exc()
+        if DEBUG: print(rets)
+        return False, -1  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway
+        # retc = 8
+        # return False, retc
+
 def runInWorkers(args, cwd=None, env=None, shell=False):
     global exitTries, conns, curTime
     for w in WORKERS:
-        # TODO ? move this inner loop as function please ?
-        retc = 0
-        c = None
-        try:
-            c = conns.get(w, None)
-            if not c:
-                host, port = w.rsplit(':', 1)
-                c = rpyc.connect(host, int(port), config=CONCONF)
-                conns[w] = c
-            # Test the connection AND the worker. rpyc raises an exception when trying to execute, not when connecting (at least sometimes).
-            # Note it does this everytime. Just because it was working before doesn't means it still does.
-            if not c.root.ping(): continue
-        except ConnectionRefusedError as e:
-            continue # try next worker
-        except Exception as e:
-            if DEBUG:
-                print("Connection to worker failed:")
-                print(traceback.format_exc())
-            continue # try next worker
-
+        c = getConnection(w)
         if not c: continue
 
         # got a client, do stuff
-        try:
-            executed = c.root.tryRun(args, cwd, env, shell)
-            if not executed: continue
-
-            for out, err in iter(c.root.comm, None):
-                if out: sys.stdout.write(out.decode('utf-8'))
-                if err: sys.stderr.write(err.decode('utf-8'))
-                #sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
-
-            retc = c.root.getExitCode()
+        executed, retc = tryRunInAWorker(c, args, cwd, env, shell)
+        if executed:
             return True, retc
-        except KeyboardInterrupt as e:
-            # Xcode loooves to send this :(
-            rets = traceback.format_exc()
-            if DEBUG: print(rets)
 
-            exitTries += 1
-            if exitTries > 5:
-                raise e
-        except rpyc.AsyncResultTimeout as e:
-            rets = traceback.format_exc()
-            if DEBUG: print(rets)
-            raise e
-        except EOFError as e:  # TODO verify this is ok with XCode
-            rets = traceback.format_exc()
-            if DEBUG: print(rets)
-            raise e
-        except Exception as e:
-            rets = traceback.format_exc()
-            if DEBUG: print(rets)
-            continue  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway
-            # retc = 8
-            # return retc
-
-    return False, 0
+    return False, -1 # could not execute
 
 def fixLink(args):
-    """This is just a test to try to fix linking.
+    """This is just to try to fix linking (on android)
     if the executable is clang, adds ++ and removes _
+    This depends on you using clang as the compiler (and not clang++)
     Will mutate args"""
+
     # only check on clang not clang++ (important because we need to remove _)
+    # this means, you should avoid to shadow/override clang++
     is_clang = args[0].endswith('/clang') or args[0].endswith('/clang_')
     if not is_clang: return False
 
@@ -176,7 +182,7 @@ def fixLink(args):
 
     if is_link:
         if args[0][-1] == '_':
-            args[0]=args[0][:-1] #remove the _ , linker needs to not have it
+            args[0]=args[0][:-1] #remove the _ , linker needs to not have it (really)
 
         if not args[0].endswith('++'): # force to use ++
             args[0] += '++'
@@ -190,15 +196,16 @@ def fixSelf(args):
     This will mutate args
     """
 
-    # notice no os.realpath on args[0]. this ensures is intentional,
-    # and also allow linking to client (shadowing)(the official way to use this script)
+    # notice no os.realpath on args[0]. this is intentional,
+    # and also allows linking to client (shadowing) (the official way to use this script)
     # #goes first as it can clash with the one below
     #if args[0] == REAL_PATH:
-    if os.path.basename(args[0]) == FNAME: # this one is safer, you can rename your client.py otherwise
+    # this one is safer, means that if its called by something with the same file name (client.py), regardless of the folder.
+    # you can rename your client.py otherwise
+    if os.path.basename(args[0]) == FNAME:
         args.pop(0)
-    # this is the usual usage, avoid looping on itself.
-    #elif args[0] == __file__:# isnt this like always true? (Notice it's only on this case, this helps (android) linking, is this still true?)
     else: # this is safer, specially in windows, where we might want to use pyinstaller to shadow an exe
+        # this is the usual usage, avoid looping on itself.
         args[0] = args[0] + '_'
 
 def runLocal(args, cwd=None, env=None, shell=False):
@@ -237,7 +244,6 @@ def run(args, cwd=None):
         if executed:
             return retc
 
-        #ForEnd
         time.sleep(COOLDOWN)
         if TIMEOUT > 0:
             curTime += COOLDOWN
@@ -246,5 +252,9 @@ def run(args, cwd=None):
                 return 9
 
 if __name__ == "__main__":
+    conns = {}
+    curTime = 0
+    exitTries = 0
+
     retc = run(sys.argv[:], os.getcwd())
     exit(retc)
