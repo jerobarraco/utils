@@ -192,7 +192,6 @@ def doWork(c):
 	for out, err in iter(c.root.comm, None):
 		if out: sys.stdout.write(out.decode('utf-8'))
 		if err: sys.stderr.write(err.decode('utf-8'))
-	# sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
 
 def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	global exitTries
@@ -269,7 +268,7 @@ def run(args, cwd=None):
 	#    )
 
 	if run_local:
-	   return runLocal(args, cwd, env, use_shell)
+		return runLocal(args, cwd, env, use_shell)
 
 	while True:
 		executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
