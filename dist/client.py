@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.20"
+__version__ = "0.21"
 
 CONF = {
     "debug": True,
@@ -26,13 +26,15 @@ CONF = {
     # List of commands to run locally, * means all
     "runLocally": [
         "/clang++", # for android linking
-        "/client.py",
     ],
     # " List of commands to run using the current environment, * means all"
     "useEnv": [
     ],
     # " List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
     "useShell": [
+    ],
+    "useComm": [
+        # for example 'grep' (which doesnt work atm)
     ]
 }
 
@@ -59,8 +61,10 @@ CONCONF = {
 FIX_ANDROID = CONF.get('fixAndroid', False)
 
 def cmdInList(arg, cmd_list):
-    if '*' in cmd_list: return True
+    if not cmd_list: return False
     for cmd in cmd_list:
+        if not cmd: continue #important to not count '' as '*' as endswith will return True
+        if cmd == '*': return True
         if arg.endswith(cmd): return True
     return False
 
@@ -84,6 +88,10 @@ def shouldUseShell(args):
 def shouldUseEnv(args):
     global CONF
     return cmdInList(args[0], CONF.get('useEnv', []))
+
+def shouldUseComm(args):
+    global CONF
+    return cmdInList(args[0], CONF.get('useComm', []))
 
 def fixLink(args):
     """This is just to try to fix linking (on android)
@@ -137,6 +145,15 @@ def fixSelf(args):
         # this is the usual usage, avoid looping on itself.
         args[0] = args[0] + '_'
 
+# https://stackoverflow.com/a/59483145/260242
+import select
+def time_input(timeout=0.1, default=None):
+    """ does not works on windows """
+    inputs, outputs, errors = select.select([sys.stdin], [], [], timeout)
+    # readline doesnt work with grep, read does, but read reads till EOF so it will hang!
+    if inputs: return (0, sys.stdin.readline().encode('utf-8'))
+    else: return (-1, default)
+
 conns = {}
 curTime = 0
 exitTries = 0
@@ -161,17 +178,31 @@ def getConnection(address):
         return None  # try next worker
     return c
 
-def tryRunInAWorker(c, args, cwd=None, env=None, shell=False):
+def doCommWork(c):
+    """Does the work using the passed worker, and tries to pass the stdin into it"""
+    while True:
+        res = c.root.comm(in_data=time_input()[1])  # no need to wait, client waits
+        if res is None: break
+        out, err = res
+        if out: sys.stdout.write(out.decode('utf-8'))
+        if err: sys.stderr.write(err.decode('utf-8'))
+
+def doWork(c):
+    """Does the work using the passed worker, without passing stdin"""
+    for out, err in iter(c.root.comm, None):
+        if out: sys.stdout.write(out.decode('utf-8'))
+        if err: sys.stderr.write(err.decode('utf-8'))
+    # sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
+
+def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
     global exitTries
     retc = -1
     try:
         executed = c.root.tryRun(args, cwd, env, shell)
         if not executed: return False, -1
 
-        for out, err in iter(c.root.comm, None):
-            if out: sys.stdout.write(out.decode('utf-8'))
-            if err: sys.stderr.write(err.decode('utf-8'))
-            # sys.stdout.write(line)# decode happens on worker (maybe if encoded decode?)
+        if comm: doCommWork(c)
+        else: doWork(c)
 
         retc = c.root.getExitCode()
         return True, retc
@@ -194,18 +225,18 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False):
     except Exception as e:
         rets = traceback.format_exc()
         if DEBUG: print(rets)
-        return False, -1  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway
-        # retc = 8
-        # return False, retc
+        # return FAILURE  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway (should this be a raise)
+        retc = 8
+    return False, retc
 
-def runInWorkers(args, cwd=None, env=None, shell=False):
+def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
     global WORKERS
     for w in WORKERS:
         c = getConnection(w)
         if not c: continue
 
         # got a client, do stuff
-        executed, retc = tryRunInAWorker(c, args, cwd, env, shell)
+        executed, retc = tryRunInAWorker(c, args, cwd, env, shell, comm)
         if executed:
             return True, retc
 
@@ -214,13 +245,10 @@ def runInWorkers(args, cwd=None, env=None, shell=False):
 def runLocal(args, cwd=None, env=None, shell=False):
     try:
         ret = subprocess.run(
-            args, cwd=cwd, check=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell, encoding='utf-8'
+            args, cwd=cwd, check=True, env=env, shell=shell
         )
-        print(ret.stdout)
         return ret.returncode
     except subprocess.CalledProcessError as e:
-        print(e.output)
-        print(traceback.format_exc())
         return e.returncode
     except Exception as e:
         print(traceback.format_exc())
@@ -233,6 +261,7 @@ def run(args, cwd=None):
     is_link = FIX_ANDROID and fixLink(args)
     run_local = is_link or shouldRunLocally(args)
     use_shell = shouldUseShell(args)
+    use_comm = shouldUseComm(args)
     env = None if not shouldUseEnv(args) else os.environ.copy()
     #if DEBUG:
     #    open(os.path.join(WORK_PATH, 'clog'), 'a').write(
@@ -243,7 +272,7 @@ def run(args, cwd=None):
        return runLocal(args, cwd, env, use_shell)
 
     while True:
-        executed, retc = runInWorkers(args, cwd, env, use_shell)
+        executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
         if executed:
             return retc
 

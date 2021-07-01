@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.20"
+__version__ = "0.21"
 
 import datetime
 import sys
@@ -93,7 +93,6 @@ class WorkerService(rpyc.Service):
         return
 
     def onTimeout(self):
-        print("timeout")
         if DEBUG:
             print("TIMEOUT!")
         else:
@@ -149,7 +148,7 @@ class WorkerService(rpyc.Service):
         self.rc = 0
         try:
             self.proc = subprocess.Popen(
-                cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, env=env, shell=shell,
+                cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE, env=env, shell=shell,
                 #cmd, cwd=cwd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell,
                 # encoding='utf-8', bufsize=1,universal_newlines=True #bufsize is only supported in text mode (encoding)
             )
@@ -178,22 +177,16 @@ class WorkerService(rpyc.Service):
         self.run(cmd, cwd, env, shell)
         return True
 
-    def exposed_comm(self):
+    def exposed_comm(self, in_data=None):
         stdout = b''
         stderr = b''
+        # handle finished process
         if not self.proc:
-            if self.stop_out or self.stop_err:
-                stdout = self.stop_out
-                stderr = self.stop_err
-                self.stop_out = b''
-                self.stop_err = b''
-                return stdout, stderr
-            else:
-                return None
+            return None
 
         try:
             # communicate will wait for the process to end (in this case with a timeout)
-            stdout, stderr = self.proc.communicate(timeout=BUFF_SECS)
+            stdout, stderr = self.proc.communicate(input=in_data, timeout=BUFF_SECS)
         except subprocess.TimeoutExpired:
             pass
 
