@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.22"
+__version__ = "0.23"
 
 CONF = {
 	"debug": True,
@@ -33,6 +33,7 @@ CONF = {
 	# " List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
 	"useShell": [
 	],
+	# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof" client might never finish.
 	"useComm": [
 		# for example 'grep' (which doesnt work atm)
 	]
@@ -45,6 +46,9 @@ import subprocess
 import sys
 import time
 import traceback
+
+# locals
+import utils
 
 REAL_PATH = os.path.realpath(__file__)
 FNAME = os.path.basename(REAL_PATH)
@@ -145,15 +149,6 @@ def fixSelf(args):
 		# this is the usual usage, avoid looping on itself.
 		args[0] = args[0] + '_'
 
-# https://stackoverflow.com/a/59483145/260242
-import select
-def time_input(timeout=0.1, default=None):
-	""" does not works on windows """
-	inputs, outputs, errors = select.select([sys.stdin], [], [], timeout)
-	# readline doesnt work with grep, read does, but read reads till EOF so it will hang!
-	if inputs: return (0, sys.stdin.readline().encode('utf-8'))
-	else: return (-1, default)
-
 conns = {}
 curTime = 0
 exitTries = 0
@@ -181,7 +176,11 @@ def getConnection(address):
 def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
 	while True:
-		res = c.root.comm(in_data=time_input()[1])  # no need to wait, client waits
+		in_data = utils.readIfAny(sys.stdin, 0.001, None)
+		# TODO fix: stdin will return '' on EOF, doushio (how to tell the worker)????
+		if in_data is not None: in_data = in_data.encode('utf-8')
+
+		res = c.root.comm(in_data=in_data)  # no need to wait, client waits
 		if res is None: break
 		out, err = res
 		if out: sys.stdout.write(out.decode('utf-8'))
@@ -189,7 +188,11 @@ def doCommWork(c):
 
 def doWork(c):
 	"""Does the work using the passed worker, without passing stdin"""
-	for out, err in iter(c.root.comm, None):
+	while True:
+		#for out, err in iter(c.root.comm, None):
+		res = c.root.comm() # less fancy, probably more fasterest
+		if res is None: break
+		out, err = res
 		if out: sys.stdout.write(out.decode('utf-8'))
 		if err: sys.stderr.write(err.decode('utf-8'))
 
@@ -224,7 +227,8 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	except Exception as e:
 		rets = traceback.format_exc()
 		if DEBUG: print(rets)
-		# return FAILURE  # hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway (should this be a raise)
+		# hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway (should this be a raise)
+		# return FAILURE
 		retc = 8
 	return False, retc
 

@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.22"
+__version__ = "0.23"
 
 import datetime
 import sys
@@ -13,8 +13,11 @@ import subprocess
 import threading
 import traceback
 import rpyc
-import select
 
+# local
+import utils
+
+# TODO move this to __main__
 if len(sys.argv) < 2:
 	print("please pass the config file as argument.")
 	exit(1)
@@ -189,8 +192,10 @@ class WorkerService(rpyc.Service):
 			if self.proc.poll() is None:
 				if in_data: self.proc.stdin.write(in_data)
 			# stdout, stderr = self.proc.communicate(input=in_data, timeout=BUFF_SECS) # this guy does not return ANY data until the proc finishes >:(
-			if select.select([self.proc.stdout], [], [], BUFF_SECS)[0]: stdout += self.proc.stdout.readline()
-			if select.select([self.proc.stderr], [], [], BUFF_SECS)[0]: stderr += self.proc.stderr.readline()
+			# if nothing avail return b'' or wont be able to concatenate
+			stdout += utils.readIfAny(self.proc.stdout, BUFF_SECS, b'')
+			# we don't really need to wait for this one, we've already waited above
+			stderr += utils.readIfAny(self.proc.stderr, 0.001, b'')
 		except subprocess.TimeoutExpired:
 			pass
 
@@ -213,6 +218,10 @@ class WorkerService(rpyc.Service):
 		"""Test the connection"""
 		return True
 
+def loadConf(fname):
+	global CONF
+	pass
+	# TODO load conf here
 
 def main():
 	global TIMEOUT, numTasks
