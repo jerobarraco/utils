@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.21"
+__version__ = "0.22"
 
 import datetime
 import sys
@@ -13,6 +13,7 @@ import subprocess
 import threading
 import traceback
 import rpyc
+import select
 
 if len(sys.argv) < 2:
 	print("please pass the config file as argument.")
@@ -25,7 +26,7 @@ numTasks = CONF.get("numTasks", 1)
 LOCK = threading.Semaphore(int(numTasks))
 DEBUG = CONF.get('debug', False)
 TIMEOUT = CONF.get('timeout', 0)
-BUFF_SECS = CONF.get('buff_secs', 0.5)
+BUFF_SECS = CONF.get('buff_secs', 0.25)
 
 class WorkerService(rpyc.Service):
 	proc = None
@@ -149,8 +150,7 @@ class WorkerService(rpyc.Service):
 		try:
 			self.proc = subprocess.Popen(
 				cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE, env=env, shell=shell,
-				#cmd, cwd=cwd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env, shell=shell,
-				# encoding='utf-8', bufsize=1,universal_newlines=True #bufsize is only supported in text mode (encoding)
+				# encoding='utf-8', bufsize=1, universal_newlines=True #bufsize is only supported in text mode (encoding)
 			)
 		except Exception as e:
 			self.stop_err += traceback.format_exc().encode('utf-8')
@@ -186,7 +186,11 @@ class WorkerService(rpyc.Service):
 
 		try:
 			# communicate will wait for the process to end (in this case with a timeout)
-			stdout, stderr = self.proc.communicate(input=in_data, timeout=BUFF_SECS)
+			if self.proc.poll() is None:
+				if in_data: self.proc.stdin.write(in_data)
+			# stdout, stderr = self.proc.communicate(input=in_data, timeout=BUFF_SECS) # this guy does not return ANY data until the proc finishes >:(
+			if select.select([self.proc.stdout], [], [], BUFF_SECS)[0]: stdout += self.proc.stdout.readline()
+			if select.select([self.proc.stderr], [], [], BUFF_SECS)[0]: stderr += self.proc.stderr.readline()
 		except subprocess.TimeoutExpired:
 			pass
 
