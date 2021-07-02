@@ -9,7 +9,7 @@ __version__ = "0.23"
 import select
 import os
 
-#inspired by stack overflow somewhere, can't find it.
+#inspired by https://stackoverflow.com/a/51604225/260242
 def readLen(p):
 	# works on mac, might work on linux, probably doesnt on windows, but you shouldn't be using it anyway
 	# if windows: return 1 #would be 'ok'
