@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.23"
+__version__ = "0.24"
 
 import datetime
 import sys
@@ -17,7 +17,7 @@ import rpyc
 # local
 import utils
 
-# TODO move this to __main__
+# TODO move this to __main__, conf reading too
 if len(sys.argv) < 2:
 	print("please pass the config file as argument.")
 	exit(1)
@@ -65,19 +65,13 @@ class WorkerService(rpyc.Service):
 
 		# this func is called more than once sometimes, beware
 		if self.proc:
-			try:
-				# communicate will wait for the process to end (in this case with a timeout)
-				o, e = self.proc.communicate(timeout=0.5)
-				self.stop_out += o
-				self.stop_err += e
-			except subprocess.TimeoutExpired:
-				# this try, and these lines in this order are necessary according to docs
-				self.proc.kill()
-				# communicate will wait for the process to end
-				# stderr pipes to stdout, also communicate sets the return code
-				o, e = self.proc.communicate()
-				self.stop_out += o
-				self.stop_err += e
+			# these lines in this order are necessary according to docs
+			self.proc.kill()
+			# communicate will wait for the process to end
+			# stderr pipes to stdout, also communicate sets the return code
+			o, e = self.proc.communicate()
+			self.stop_out += o
+			self.stop_err += e
 
 			self.rc = self.proc.returncode
 			if DEBUG:
@@ -180,7 +174,7 @@ class WorkerService(rpyc.Service):
 		self.run(cmd, cwd, env, shell)
 		return True
 
-	def exposed_comm(self, in_data=None):
+	def exposed_comm(self, in_data=None, kill=False):
 		stdout = b''
 		stderr = b''
 		# handle finished process
@@ -200,7 +194,7 @@ class WorkerService(rpyc.Service):
 			pass
 
 		# handle timeout and dead process
-		if self.timeout or (not self.proc) or (self.proc.returncode is not None):
+		if self.timeout or kill or (not self.proc) or (self.proc.returncode is not None):
 			self.stop() # will fill stop_*
 			stderr += self.stop_err
 			stdout += self.stop_out
