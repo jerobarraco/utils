@@ -17,19 +17,17 @@ import rpyc
 # local
 import utils
 
-# TODO move this to __main__, conf reading too
-if len(sys.argv) < 2:
-	print("please pass the config file as argument.")
-	exit(1)
+# Globals
+CONF = {}
+remapDirs = {}
+remapFiles = {}
+numTasks = 1
+LOCK = None
+DEBUG = True
+TIMEOUT = 1
+BUFF_SECS = 1
 
-CONF = json.load(open(sys.argv[1], 'r'))
-remapDirs = CONF.get('remapDirs', {})
-remapFiles = CONF.get("remapFiles", {})
-numTasks = CONF.get("numTasks", 1)
-LOCK = threading.Semaphore(int(numTasks))
-DEBUG = CONF.get('debug', False)
-TIMEOUT = CONF.get('timeout', 0)
-BUFF_SECS = CONF.get('buff_secs', 0.25)
+# Code
 
 class WorkerService(rpyc.Service):
 	proc = None
@@ -216,12 +214,26 @@ class WorkerService(rpyc.Service):
 		return True
 
 def loadConf(fname):
-	global CONF
-	pass
-	# TODO load conf here
+	global CONF, remapDirs, remapFiles, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS
+
+	CONF = json.load(open(fname, 'r'))
+	remapDirs = CONF.get('remapDirs', {})
+	remapFiles = CONF.get("remapFiles", {})
+	numTasks = CONF.get("numTasks", 1)
+	LOCK = threading.Semaphore(int(numTasks))
+	DEBUG = CONF.get('debug', False)
+	TIMEOUT = CONF.get('timeout', 0)
+	BUFF_SECS = CONF.get('buff_secs', 0.25)
+	return
 
 def main():
-	global TIMEOUT, numTasks
+	global TIMEOUT, numTasks, CONF
+	if len(sys.argv) < 2:
+		print("Please pass the config file as argument.")
+		exit(1)
+
+	loadConf(sys.argv[1])
+
 	port = CONF['port']
 	host = CONF['host']
 	print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s" % (host, port, numTasks, TIMEOUT))
