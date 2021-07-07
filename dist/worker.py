@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.24"
+__version__ = "0.25"
 
 import datetime
 import sys
@@ -38,7 +38,6 @@ class WorkerService(rpyc.Service):
 	stop_err = b''
 	locked = False
 	timer = None
-	timeout = False
 	stopping = False
 	start_time = None
 	def on_connect(self, conn):
@@ -53,15 +52,16 @@ class WorkerService(rpyc.Service):
 
 	def stop(self):
 		global LOCK
-		# once stopped no need to stop again (hopefully), avoid problems when re-entering
-		# this function can be called many times, even as a result of this functions
-		if self.stopping: return
-		self.stopping = True
-
+		# TODO stop thread lock
 		# first check for the timer. we are not really reentrant
 		if self.timer:
 			self.timer.cancel()
 			self.timer = None
+
+		# once stopped no need to stop again (hopefully), avoid problems when re-entering
+		# this function can be called many times, even as a result of this functions
+		if self.stopping: return
+		self.stopping = True
 
 		# this func is called more than once sometimes, beware
 		if self.proc:
@@ -96,9 +96,8 @@ class WorkerService(rpyc.Service):
 		else:
 			sys.stdout.write('|')
 			sys.stdout.flush()
-		# avoid thread weirdness, loosing output, and let the process finish if it happens to finish by next read
-		# comm will check and kill
-		self.timeout = True
+		self.stop()
+		self.stop_err += b"\nOUTATIME!\n"
 
 	def run(self, cmd, cwd=None, env=None, shell=False):
 		global TIMEOUT, DEBUG
@@ -136,7 +135,7 @@ class WorkerService(rpyc.Service):
 			print('env', str(env))
 			print('shell', str(shell))
 		else:
-			sys.stdout.write("-")
+			sys.stdout.write(">")
 			sys.stdout.flush()
 
 		if TIMEOUT > 0:
@@ -177,8 +176,16 @@ class WorkerService(rpyc.Service):
 	def exposed_comm(self, in_data=None, kill=False):
 		stdout = b''
 		stderr = b''
+
 		# handle finished process
 		if not self.proc:
+			# avoid loosing output
+			stderr += self.stop_err
+			stdout += self.stop_out
+			self.stop_err = b''
+			self.stop_out = b''
+			if stderr or stdout:
+				return stdout, stderr
 			return None
 
 		try:
@@ -194,14 +201,10 @@ class WorkerService(rpyc.Service):
 			pass
 
 		# handle timeout and dead process
-		if self.timeout or kill or (not self.proc) or (self.proc.returncode is not None):
+		# check self.proc it might have been killed by the timer
+		if self.proc and (self.proc.returncode is not None):
 			self.stop() # will fill stop_*
-			stderr += self.stop_err
-			stdout += self.stop_out
-			self.stop_err = b''
-			self.stop_out = b''
-			if self.timeout:
-				stderr += b"\nOUTATIME!\n"
+			# to avoid loosing output, we continue as normal, and check stopped on next comm
 
 		return stdout, stderr
 
