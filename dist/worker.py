@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.25"
+__version__ = "0.26"
 
 import datetime
 import sys
@@ -36,8 +36,8 @@ class WorkerService(rpyc.Service):
 	stop_err = b''
 	locked = False
 	timer = None
-	stopping = False
 	start_time = None
+	stop_lock = None
 	def on_connect(self, conn):
 		# code that runs when a connection is created
 		# (to init the service, if needed)
@@ -50,16 +50,15 @@ class WorkerService(rpyc.Service):
 
 	def stop(self):
 		global LOCK
-		# TODO stop thread lock
+		# once stopped no need to stop again (hopefully), avoid problems when re-entering
+		# this function can be called many times, even as a result of this functions
+		if not self.stop_lock.acquire(False):
+			return # already stopping
+
 		# first check for the timer. we are not really reentrant
 		if self.timer:
 			self.timer.cancel()
 			self.timer = None
-
-		# once stopped no need to stop again (hopefully), avoid problems when re-entering
-		# this function can be called many times, even as a result of this functions
-		if self.stopping: return
-		self.stopping = True
 
 		# this func is called more than once sometimes, beware
 		if self.proc:
@@ -82,7 +81,7 @@ class WorkerService(rpyc.Service):
 		self.proc = None
 
 		# this func is called more than once sometimes, beware
-		if self.locked:
+		if self.locked: # might be unnecessary since we have a thread lock, but better be safe for now
 			self.locked = False
 			LOCK.release()
 
@@ -103,7 +102,8 @@ class WorkerService(rpyc.Service):
 		self.stop_err = b""
 		self.rc = 0
 		self.proc = None
-		self.stopping = False
+		self.stop_lock = threading.Semaphore(1)
+
 		# a bit deprecated, to be able to run things locally.
 		for k, v in remapFiles.items():
 			c = cmd[0]
@@ -183,7 +183,9 @@ class WorkerService(rpyc.Service):
 			self.stop_err = b''
 			self.stop_out = b''
 			if stderr or stdout:
+				# if there was some output, we need to return that. and we should get a new call to comm.
 				return stdout, stderr
+
 			return None
 
 		try:
@@ -198,7 +200,7 @@ class WorkerService(rpyc.Service):
 		except subprocess.TimeoutExpired:
 			pass
 
-		# handle timeout and dead process
+		# handle dead process
 		# check self.proc it might have been killed by the timer
 		if self.proc and (self.proc.returncode is not None):
 			self.stop() # will fill stop_*
