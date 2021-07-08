@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.26"
+__version__ = "0.27"
 
 import datetime
 import sys
@@ -38,6 +38,7 @@ class WorkerService(rpyc.Service):
 	timer = None
 	start_time = None
 	stop_lock = None
+
 	def on_connect(self, conn):
 		# code that runs when a connection is created
 		# (to init the service, if needed)
@@ -48,12 +49,15 @@ class WorkerService(rpyc.Service):
 		# (to finalize the service, if needed)
 		self.stop() # make sure to stop the process, can happen on certain conditions
 
+	def __init__(self):
+		self.stop_lock = threading.Semaphore(1)
+
 	def stop(self):
 		global LOCK
 		# once stopped no need to stop again (hopefully), avoid problems when re-entering
 		# this function can be called many times, even as a result of this functions
 		if not self.stop_lock.acquire(False):
-			return # already stopping
+			return False # already stopping
 
 		# first check for the timer. we are not really reentrant
 		if self.timer:
@@ -85,7 +89,8 @@ class WorkerService(rpyc.Service):
 			self.locked = False
 			LOCK.release()
 
-		return
+		self.stop_lock.release() # in case someone will try to re-run on the same connection
+		return True
 
 	def onTimeout(self):
 		if DEBUG:
@@ -98,11 +103,19 @@ class WorkerService(rpyc.Service):
 
 	def run(self, cmd, cwd=None, env=None, shell=False):
 		global TIMEOUT, DEBUG
+		if self.proc:
+			if DEBUG:
+				print('Trying to run a process when im already running!')
+			else:
+				sys.stdout.write(':')
+				sys.stdout.flush()
+			self.stop() #stopping just in case, old process might have been forsaken
+			return False
+
 		self.stop_out = b""
 		self.stop_err = b""
 		self.rc = 0
 		self.proc = None
-		self.stop_lock = threading.Semaphore(1)
 
 		# a bit deprecated, to be able to run things locally.
 		for k, v in remapFiles.items():
@@ -171,7 +184,7 @@ class WorkerService(rpyc.Service):
 		self.run(cmd, cwd, env, shell)
 		return True
 
-	def exposed_comm(self, in_data=None, kill=False):
+	def exposed_comm(self, in_data=None):
 		stdout = b''
 		stderr = b''
 
@@ -207,6 +220,9 @@ class WorkerService(rpyc.Service):
 			# to avoid loosing output, we continue as normal, and check stopped on next comm
 
 		return stdout, stderr
+
+	def exposed_stop(self):
+		return self.stop()
 
 	def exposed_getExitCode(self):
 		return self.rc

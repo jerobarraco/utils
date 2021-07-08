@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.26"
+__version__ = "0.27"
 
 CONF = {
 	"debug": True,
@@ -175,7 +175,6 @@ def getConnection(address):
 
 def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
-	kill = False
 	while True:
 		in_data = utils.readIfAny(sys.stdin, 0.001, None)
 		if in_data is not None:
@@ -184,9 +183,9 @@ def doCommWork(c):
 			# 	is there something to fix? do i really _need_ to terminate it? isnt eof on stdin a valid run condition? can stdin have something later?
 			#if not in_data:
 			#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
-			#	kill = True
+			#	c.root.stop()
 
-		res = c.root.comm(in_data=in_data, kill=kill)  # no need to wait, client waits
+		res = c.root.comm(in_data=in_data)  # no need to wait, client waits
 		if res is None: break
 		out, err = res
 		if out: sys.stdout.write(out.decode('utf-8'))
