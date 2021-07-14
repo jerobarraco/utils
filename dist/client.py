@@ -11,6 +11,7 @@ CONF = {
 	"timeout": 180,
 	"cooldown": 2,
 	"fixAndroid": False, # Small optimization to speed up by skipping some android fixes
+	"sleep": 0,
 	"workers": [
 		"localhost:7715",
 		"localhost:7717",
@@ -63,6 +64,7 @@ CONCONF = {
 	"sync_request_timeout": None if TIMEOUT < 1 else TIMEOUT
 }
 FIX_ANDROID = CONF.get('fixAndroid', False)
+SLEEP = CONF.get('sleep', 0)
 
 def cmdInList(arg, cmd_list):
 	if not cmd_list: return False
@@ -262,7 +264,7 @@ def runLocal(args, cwd=None, env=None, shell=False):
 		return -10
 
 def run(args, cwd=None):
-	global exitTries, curTime, CONF
+	global exitTries, curTime, CONF, SLEEP
 
 	fixSelf(args)
 	is_link = FIX_ANDROID and fixLink(args)
@@ -281,6 +283,7 @@ def run(args, cwd=None):
 	while True:
 		executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
 		if executed:
+			if SLEEP: time.sleep(SLEEP)
 			return retc
 
 		time.sleep(COOLDOWN)
@@ -289,6 +292,7 @@ def run(args, cwd=None):
 			if curTime >= TIMEOUT:
 				print("CLIENT TIMEOUT!")
 				return 9
+
 
 if __name__ == "__main__":
 	conns = {}
