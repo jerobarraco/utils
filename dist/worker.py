@@ -4,14 +4,18 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.27"
+__version__ = "0.28"
 
+# built-in
 import datetime
 import sys
 import json
 import subprocess
 import threading
 import traceback
+import collections
+
+# 3rd party
 import rpyc
 
 # local
@@ -24,8 +28,20 @@ remapFiles = {}
 numTasks = 1
 LOCK = None
 DEBUG = True
+USE_COLORS = False
 TIMEOUT = 1
 BUFF_SECS = 1
+
+COLORS_T = (
+	utils.Colors.T_RED, utils.Colors.T_GREEN, utils.Colors.T_YELLOW, utils.Colors.T_BLUE, utils.Colors.T_PURPLE, utils.Colors.T_CYAN, utils.Colors.T_WHITE,
+	utils.Colors.T_B_RED, utils.Colors.T_B_GREEN, utils.Colors.T_B_YELLOW, utils.Colors.T_B_BLUE, utils.Colors.T_B_PURPLE, utils.Colors.T_B_CYAN, utils.Colors.T_B_WHITE,
+)
+COLORS_B = (
+	utils.Colors.B_RED, utils.Colors.B_GREEN, utils.Colors.B_YELLOW, utils.Colors.B_BLUE, utils.Colors.B_PURPLE, utils.Colors.B_CYAN, utils.Colors.B_WHITE,
+	utils.Colors.B_B_RED, utils.Colors.B_B_GREEN, utils.Colors.B_B_YELLOW, utils.Colors.B_B_BLUE, utils.Colors.B_B_PURPLE, utils.Colors.B_B_CYAN, utils.Colors.B_B_WHITE,
+)
+COLORS = COLORS_T
+COLOR_IDX = collections.deque((i for i in range(len(COLORS))))
 
 # Code
 
@@ -38,6 +54,13 @@ class WorkerService(rpyc.Service):
 	timer = None
 	start_time = None
 	stop_lock = None
+	color_i = -1
+
+	T_START = '>'
+	T_STOP = '-'
+	T_ERROR = 'X'
+	T_TIME_OUT = '!'
+	T_FORCE_STOP = '='
 
 	def on_connect(self, conn):
 		# code that runs when a connection is created
@@ -52,8 +75,15 @@ class WorkerService(rpyc.Service):
 	def __init__(self):
 		self.stop_lock = threading.Semaphore(1)
 
+	def write(self, msg):
+		global COLORS
+		if self.color_i>-1:
+			msg = COLORS[self.color_i] + msg + utils.Colors.RESET
+		sys.stdout.write(msg)
+		sys.stdout.flush()
+
 	def stop(self):
-		global LOCK
+		global LOCK, COLOR_IDX
 		# once stopped no need to stop again (hopefully), avoid problems when re-entering
 		# this function can be called many times, even as a result of this functions
 		if not self.stop_lock.acquire(False):
@@ -79,10 +109,13 @@ class WorkerService(rpyc.Service):
 				delta = datetime.datetime.now() - self.start_time
 				print('stop: %i > %s' % (self.rc, delta))
 			else:
-				sys.stdout.write(".")
-				sys.stdout.flush()
+				self.write(WorkerService.T_STOP)
 
 		self.proc = None
+		# return the color
+		if self.color_i >= 0:
+			COLOR_IDX.append(self.color_i) # use appendleft if you want to reuse a color as soon as it finishes
+			self.color_i = -1
 
 		# this func is called more than once sometimes, beware
 		if self.locked: # might be unnecessary since we have a thread lock, but better be safe for now
@@ -96,19 +129,17 @@ class WorkerService(rpyc.Service):
 		if DEBUG:
 			print("TIMEOUT!")
 		else:
-			sys.stdout.write('|')
-			sys.stdout.flush()
+			self.write(WorkerService.T_TIME_OUT)
 		self.stop()
 		self.stop_err += b"\nOUTATIME!\n"
 
 	def run(self, cmd, cwd=None, env=None, shell=False):
-		global TIMEOUT, DEBUG
+		global TIMEOUT, DEBUG, USE_COLORS
 		if self.proc:
 			if DEBUG:
 				print('Trying to run a process when im already running!')
 			else:
-				sys.stdout.write(':')
-				sys.stdout.flush()
+				self.write(WorkerService.T_FORCE_STOP)
 			self.stop() #stopping just in case, old process might have been forsaken
 			return False
 
@@ -116,6 +147,12 @@ class WorkerService(rpyc.Service):
 		self.stop_err = b""
 		self.rc = 0
 		self.proc = None
+
+		if USE_COLORS:
+			try:
+				self.color_i = COLOR_IDX.popleft()
+			except:
+				pass
 
 		# a bit deprecated, to be able to run things locally.
 		for k, v in remapFiles.items():
@@ -146,8 +183,7 @@ class WorkerService(rpyc.Service):
 			print('env', str(env))
 			print('shell', str(shell))
 		else:
-			sys.stdout.write(">")
-			sys.stdout.flush()
+			self.write(WorkerService.T_START)
 
 		if TIMEOUT > 0:
 			self.timer = threading.Timer(TIMEOUT, self.onTimeout)
@@ -165,8 +201,7 @@ class WorkerService(rpyc.Service):
 				print("\nWorker General Exception!\n")
 				print(self.stop_err)
 			else:
-				sys.stdout.write('X')
-				sys.stdout.flush()
+				self.write(WorkerService.T_ERROR)
 
 			self.stop()
 			# self.rc = 6 # stop will set rc, but we might want to make this explicit
@@ -232,7 +267,7 @@ class WorkerService(rpyc.Service):
 		return True
 
 def loadConf(fname):
-	global CONF, remapDirs, remapFiles, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS
+	global CONF, remapDirs, remapFiles, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
 
 	CONF = json.load(open(fname, 'r'))
 	remapDirs = CONF.get('remapDirs', {})
@@ -240,8 +275,21 @@ def loadConf(fname):
 	numTasks = CONF.get("numTasks", 1)
 	LOCK = threading.Semaphore(int(numTasks))
 	DEBUG = CONF.get('debug', False)
+	USE_COLORS = CONF.get('colors', False)
 	TIMEOUT = CONF.get('timeout', 0)
 	BUFF_SECS = CONF.get('buff_secs', 0.25)
+
+	icons = CONF.get('icons', ())
+	if icons:
+		WorkerService.T_START = icons[0]
+		WorkerService.T_STOP = icons[1]
+		WorkerService.T_ERROR = icons[2]
+		WorkerService.T_TIME_OUT = icons[3]
+		WorkerService.T_FORCE_STOP = icons[4]
+	if icons or CONF.get('colorsBg', False):
+		COLORS = COLORS_B
+		COLOR_IDX = collections.deque((i for i in range(len(COLORS))))
+
 	return
 
 def main():

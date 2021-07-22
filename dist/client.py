@@ -4,7 +4,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.27"
+__version__ = "0.28"
 
 CONF = {
 	"debug": True,
@@ -20,8 +20,8 @@ CONF = {
 		"localhost:7712",
 		"localhost:7718",
 		"localhost:7703",
-	],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
 		"localhost:7705",
+	],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
 		"localhost:7723",
 	],
 	# List of commands to run locally, * means all
