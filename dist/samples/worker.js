@@ -6,7 +6,7 @@
 	"debug": false,
 	"colors": true,
 	"colorsBg": false,
-	"icons": ["▶", "✔", "X", "!", "="],
+	"icons": ["▶", "✓", "✘", "!", "="],
 	"remapFiles": {
 		"/clang": "/clang_"
 	}
