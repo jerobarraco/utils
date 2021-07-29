@@ -62,7 +62,19 @@ fix android
     cp ./clang_ ./clang++
     remove remaps on clang++ in workers
 
-    (did i changed the compiler somewhere to be clang? where?)
+    modify client.py
+    set config flag
+        fixAndroid : true
+
+    modify gradle.properties
+        org.gradle.workers.max=48
+        org.gradle.parallel=true
+
+    change the compiler on 
+        (somewhere)/CMakeFiles/3.10.2/CMakeCXXCompiler.cmake
+            set(CMAKE_CXX_COMPILER "/usr/local/share/android-sdk/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang")
+
+   
 
 
 
