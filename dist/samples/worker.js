@@ -2,8 +2,11 @@
 	"host": "localhost",
 	"port": "7711",
 	"numTasks": 5,
-	"debug": false,
 	"timeout": 180,
+	"debug": false,
+	"colors": true,
+	"colorsBg": false,
+	"icons": ["▶", "✔", "X", "!", "="],
 	"remapFiles": {
 		"/clang": "/clang_"
 	}

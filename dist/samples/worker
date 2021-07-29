@@ -29,6 +29,6 @@ mount_smbfs //worker@mymachine/myuser/Library/Caches/JetBrains/AppCode2021.1/ ./
 pushd /Users/myuser/work/utils/dist/rel || exit
 
 # you can remove the "nice" on your machine
-nice ./worker.py ./worker-x.json
+nice ./worker.py ./worker-x.js
 
 popd

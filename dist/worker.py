@@ -1,10 +1,11 @@
 #!/usr/local/bin/python3
 # coding: utf-8
+#or use !/usr/bin/python3
 
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.28"
+__version__ = "0.29"
 
 # built-in
 import datetime
@@ -280,13 +281,13 @@ def loadConf(fname):
 	BUFF_SECS = CONF.get('buff_secs', 0.25)
 
 	icons = CONF.get('icons', ())
-	if icons:
+	if icons and len(icons)>4:
 		WorkerService.T_START = icons[0]
 		WorkerService.T_STOP = icons[1]
 		WorkerService.T_ERROR = icons[2]
 		WorkerService.T_TIME_OUT = icons[3]
 		WorkerService.T_FORCE_STOP = icons[4]
-	if icons or CONF.get('colorsBg', False):
+	if CONF.get('colorsBg', False):
 		COLORS = COLORS_B
 		COLOR_IDX = collections.deque((i for i in range(len(COLORS))))
 
