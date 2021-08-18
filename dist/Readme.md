@@ -83,7 +83,8 @@ fix em
     see $HOME/.emscripten
 
 # Unsupported
-Pipes not supported (stdin stdout). will hang the command (probably). (unless is a complex expression ran in a shell)
+Pipes (stdin stdout) support is not good ("use_comm")
+will hang the command (probably). (unless is a complex expression ran in a shell)
 environ purposely not forwarded (by default, can be configured). 
 shell purposely not activated (by default, can be configured)
 interactive shell not supported (input password, enter yes, etc)

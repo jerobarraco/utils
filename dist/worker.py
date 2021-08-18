@@ -1,11 +1,11 @@
-#!/usr/local/bin/python3
+#!/usr/bin/python3
 # coding: utf-8
-#or use !/usr/bin/python3
+#!/usr/local/bin/python3
 
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "0.29"
+__version__ = "1.00"
 
 # built-in
 import datetime

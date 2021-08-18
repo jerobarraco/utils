@@ -13,9 +13,10 @@ if test -f "clang_"; then
   rm ./clang
 else
   mv clang clang_
-  rm clang++
+  mv clang++ clang++o
   rm c++
   rm cc
+  ln -s ./clang_ clang++
   ln -s ./clang_ c++
   ln -s ./clang_ c++_
   ln -s ./clang_ cc
