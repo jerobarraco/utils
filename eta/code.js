@@ -62,7 +62,7 @@ var _eta = {
 		document.getElementById("last_ms").value = _eta.l; 
 		_eta.saveToUrl(); // write url
 	},
-	reset(){
+	start() { // will reset stuff
 		_eta.stop();
 		_eta.c = 0;
 		_eta.e = 0;//eta
@@ -81,15 +81,20 @@ var _eta = {
 		_eta.tick();
 
 		_eta.setCountBtnText("Count");
+		_eta.setTitle(document.getElementById("titles").value)
 		document.getElementById("b_reset").value = "Restart";
 
 		// beware conflicts with load
 		document.getElementById("start_ms").value = _eta.st;
 		// not saving to url here because it will mess with load, and reset
 	},
+	reset() {
+		_eta.start();
+		_eta.saveToUrl();
+	},
 	load() {
 		let sms = parseInt(document.getElementById("start_ms").value);
-		_eta.reset(); //last is set to now, that's ok (kinda) 
+		_eta.start(); //last is set to now. but we reload it below
 		// restore original startms
 		document.getElementById("start_ms").value = sms;
 
@@ -104,6 +109,8 @@ var _eta = {
 
 		_eta.a = _eta.s/_eta.c;
 		_eta.ld = _eta.a;
+
+		_eta.saveToUrl();
 	},
 	ms2td(v, simple){
 		v = Math.ceil(v);
@@ -223,7 +230,7 @@ var _eta = {
 		t += "CalcAvg.			: "+_eta.ms2td(_eta.ca) +"<br>";
 		t += "CalcE.T.A.		: "+_eta.ms2td(_eta.ce) +"<br>";
 		t += "--------------------------------------<br/>";
-		t += "Sum			: "+_eta.ms2td(_eta.s) +"<br/>";
+		t += "Acum.				: "+_eta.ms2td(_eta.s) +"<br/>";
 		//t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.ms2td(_eta.st) + "<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
@@ -232,7 +239,7 @@ var _eta = {
 	},
 	setTitle(nt) {
 		document.getElementById("titles").value = nt;
-		document.title = "ETA. - " + nt;
+		document.title = "ETA.: " + nt;
 	},
 	loadFromUrl() {
 		let params = new URLSearchParams(document.location.search.substring(1));
@@ -251,8 +258,10 @@ var _eta = {
 		document.getElementById("start_count").value = c;
 		document.getElementById("start_ms").value = sms;
 		document.getElementById("last_ms").value = lms;
-		_eta.setTitle(nt);
+		document.getElementById("titles").value = nt;
 
+		// this function should limit itself to set values on the doc elements, load handles the rest
+		// this is to support load and reset behaving similar
 		_eta.load();
 	},
 	saveToUrl() {
