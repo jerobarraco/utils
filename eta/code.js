@@ -217,12 +217,28 @@ var _eta = {
 */
 		return t + " " + vv;
 	},
+	getProgressBar(p) {
+		let len = 20;
+		let done = p*len;
+		let full = Math.floor(done);
+		let empty = len - Math.ceil(done);
+		let partial = done - full;
+
+		let b = "";
+		b += "&#x2588;".repeat(full);
+		b += partial == 0 ? "" : (partial < 0.5 ? "&#x2592;" : "&#x2593;");
+		b += "&#x2591;".repeat(empty);
+		return b;
+	},
 	show() {
 		let sa = _eta.simplify(_eta.a);
 		let sl = _eta.simplify(_eta.ld);
+		let p = _eta.c/_eta.o; // () to force float
 
 		let t = "";
-		t += "Progress		: "+ _eta.o +" -"+(_eta.o-_eta.c) +" = "+_eta.c+"<br>";
+		t += _eta.getProgressBar(p) + "<br>";
+		t += "Completion	: "+ (p*100).toFixed(8) + "%<br>";
+		t += "Progress		: "+ _eta.o +" -"+(_eta.o-_eta.c) + " = " + _eta.c + "<br>";
 		t += "ETA			: "+_eta.ms2td(_eta.e) +"<br>";
 		t += "Avg. Dur.		: "+_eta.ms2td(_eta.a) +"<br>";
 		t += "Last Dur.		: "+_eta.ms2td(_eta.ld) +"<br>";
@@ -234,6 +250,7 @@ var _eta = {
 		t += "CalcE.T.A.		: "+_eta.ms2td(_eta.ce) +"<br>";
 		t += "--------------------------------------<br/>";
 		t += "Acum.				: "+_eta.ms2td(_eta.s) +"<br/>";
+		t += "--------------------------------------<br/>";
 		//t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.ms2td(_eta.st) + "<br/>";
 		document.getElementById("text").innerHTML = t;
 	},

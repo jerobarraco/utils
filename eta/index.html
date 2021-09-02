@@ -7,24 +7,22 @@
 	<script src="code.js"></script>
 </head>
 <body>
-	<input type="button" name="name" value="Stop" onclick="_eta.stop()"/>
-	<input type="button" id="b_reset" name="name" value="Start" onclick="_eta.reset()"/>
-	<input type="button" id="b_count" name="name" value="Count" onclick="_eta.count()"/>
-
 	<br/>
 	<p id="text"></p>
 	<p id="text_slow"></p>
-
+	<input type="button" name="name" value="Stop" onclick="_eta.stop()"/>
+	<input type="button" id="b_reset" name="name" value="Start" onclick="_eta.reset()"/>
+	<input type="button" id="b_count" name="name" value="Count" onclick="_eta.count()"/>
 	<br/>
 	---------------[RE]START---------------<br/>
 	Title<br/>
 	<input type="text" id="titles" value="" />
 	<br/>
-	Refresh (ms)<br/>
-	<input type="number" id="toms" value="1000" max="9999999999999999999999999999999999999999999999999999999999999999"/>
-	<br/>
 	Objective (quantity)<br/>
 	<input type="number" id="cant" value="10" max="9999999999999999999999999999999999999999999999999999999999999999"/>
+	<br/>
+	Refresh (ms)<br/>
+	<input type="number" id="toms" value="1000" max="9999999999999999999999999999999999999999999999999999999999999999"/>
 	<br/>
 	---------------[RE]LOAD---------------<br/>
 	Count <input type="number" id="start_count" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
@@ -33,6 +31,5 @@
 	LastMS <input type="number" id="last_ms" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
 <br/>
 	<input type="button" name="name" value="Re/Load" onclick="_eta.load()"/>
-
 </body>
 </html>
