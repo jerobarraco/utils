@@ -62,7 +62,7 @@ var _eta = {
 		document.getElementById("last_ms").value = _eta.l; 
 		_eta.saveToUrl(); // write url
 	},
-	start() { // will reset stuff
+	restart() { // will reset stuff
 		_eta.stop();
 		_eta.c = 0;
 		_eta.e = 0;//eta
@@ -89,24 +89,27 @@ var _eta = {
 		// not saving to url here because it will mess with load, and reset
 	},
 	reset() {
-		_eta.start();
+		_eta.restart();
 		_eta.saveToUrl();
 	},
 	load() {
+		// cache sms because "restart" will override it with last (aka now)
 		let sms = parseInt(document.getElementById("start_ms").value);
-		_eta.start(); //last is set to now. but we reload it below
+		_eta.restart(); //last is set to now. but we reload it below
 		// restore original startms
 		document.getElementById("start_ms").value = sms;
-
-		_eta.c = parseInt(document.getElementById("start_count").value);
 		_eta.st = sms;
 
-		// try to load last ms if possible otherwise reset above makes it default to now 
+		// load count
+		_eta.c = parseInt(document.getElementById("start_count").value);
+
+		// try to load last ms if possible otherwise "restart" above makes it default to now
 		let nl = parseInt(document.getElementById("last_ms").value);
-		if (!isNaN(nl) && nl > 0 && nl > _eta.st) _eta.l = nl;
+		if (!isNaN(nl) && nl > 0 && nl > _eta.st) {
+			_eta.l = nl;
+		}
 
 		_eta.s = (_eta.l - _eta.st);
-
 		_eta.a = _eta.s/_eta.c;
 		_eta.ld = _eta.a;
 
