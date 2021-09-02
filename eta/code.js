@@ -19,7 +19,7 @@ var _eta = {
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
 		_eta.setCountBtnText("Continue");
-		document.getElementById("b_reset").value = "Start";
+		// don't change reset to start, as it actually clicking it will still reset
 	},
 	tick(){
 		_eta.timer = setTimeout(_eta.tick, _eta.to);
@@ -85,9 +85,10 @@ var _eta = {
 
 		// beware conflicts with load
 		document.getElementById("start_ms").value = _eta.st;
+		// not saving to url here because it will mess with load, and reset
 	},
 	load() {
-		let sms = parseInt( document.getElementById("start_ms").value);
+		let sms = parseInt(document.getElementById("start_ms").value);
 		_eta.reset(); //last is set to now, that's ok (kinda) 
 		// restore original startms
 		document.getElementById("start_ms").value = sms;
@@ -103,9 +104,6 @@ var _eta = {
 
 		_eta.a = _eta.s/_eta.c;
 		_eta.ld = _eta.a;
-	},
-	setCountBtnText(t) {
-		document.getElementById("b_count").value = t;
 	},
 	ms2td(v, simple){
 		v = Math.ceil(v);
@@ -156,8 +154,26 @@ var _eta = {
 		return t;
 	},
 	simplify(v){
-		// TODO turn this into a for
-		// TODO return only one value
+		let data = [
+			["/ms", 5, 1000],
+			["/s", 5, 60],
+			["/mi", 5, 60],
+			["/h", 5, 24],
+			["/d", 5, 7],
+			["/w", 5, 4],
+			["/mo", 5, 12],
+			["/y", Infinity, 1]
+		];
+		let vv = 1.0/v;
+		let t = "";
+		for(var i = 0, size = data.length; i < size ; i++) {
+			let row = data[i];
+			t = row[0];
+			if (vv >= row[1]) break;
+			vv *= row[2]
+		}
+		/*
+		// left for testing, once is settled will be removed
 		let vv = 1.0/v;
 		let t = "/ms";
 		if (vv<5){
@@ -188,7 +204,7 @@ var _eta = {
 				}
 			}
 		}
-
+*/
 		return t + " " + vv;
 	},
 	show() {
@@ -203,7 +219,7 @@ var _eta = {
 		t += "Avg. Speed	: "+sa+"<br/>";
 		t += "Last Speed	: "+sl+"<br/>";
 		t += "--------------------------------------<br/>";
-		t += "CalcCurr.			: "+_eta.ms2td(_eta.cs) +"<br>";
+		t += "CalcDur.			: "+_eta.ms2td(_eta.cs) +"<br>";
 		t += "CalcAvg.			: "+_eta.ms2td(_eta.ca) +"<br>";
 		t += "CalcE.T.A.		: "+_eta.ms2td(_eta.ce) +"<br>";
 		t += "--------------------------------------<br/>";
@@ -211,13 +227,21 @@ var _eta = {
 		//t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.ms2td(_eta.st) + "<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
+	setCountBtnText(t) {
+		document.getElementById("b_count").value = t;
+	},
+	setTitle(nt) {
+		document.getElementById("titles").value = nt;
+		document.title = "ETA. - " + nt;
+	},
 	loadFromUrl() {
 		let params = new URLSearchParams(document.location.search.substring(1));
 		let c = parseInt(params.get("c"), 10); // start count
 		let o = parseInt(params.get("o"), 10); // objective
 		let sms = parseInt(params.get("s"), 10); // start ms
 		let lms = parseInt(params.get("l"), 10); // last ms
-		let toms = parseInt(params.get("toms"), 10); // granularity
+		let toms = parseInt(params.get("to"), 10); // refresh rate
+		let nt = params.get("tt");
 
 		if (isNaN(c) || isNaN(sms) || isNaN(o)) return; // we need this
 		if (isNaN(lms)) lms = +new Date(); //gets current milliseconds by default. meh
@@ -227,6 +251,7 @@ var _eta = {
 		document.getElementById("start_count").value = c;
 		document.getElementById("start_ms").value = sms;
 		document.getElementById("last_ms").value = lms;
+		_eta.setTitle(nt);
 
 		_eta.load();
 	},
@@ -236,7 +261,8 @@ var _eta = {
 		u.searchParams.set("o", _eta.o); // objective
 		u.searchParams.set("s", _eta.st); // start
 		u.searchParams.set("l", _eta.l); // last
-		
+		u.searchParams.set("to", _eta.to) // refresh
+		u.searchParams.set("tt", document.getElementById("titles").value) // title
 		window.history.replaceState({}, "E.T.A. " +_eta.ms2td(_eta.e), u);
 	}
 };
