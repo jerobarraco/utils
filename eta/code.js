@@ -204,11 +204,11 @@ var _eta = {
 
 		return t + " " + vv;
 	},
+	CleanBarStyle(bar) {
+		return isNaN(bar) || bar < 0 ? 0 : (bar < _eta.BARS.length ? bar : _eta.BARS.length -1);
+	},
 	GetProgressBar(p) {
-		let bari = parseInt(document.getElementById("bar").value, 10);
-		bari = isNaN(bari) ? 0 : bari;
-		bari = bari < _eta.BARS.length ? bari: _eta.BARS.length -1;
-
+		let bari = _eta.CleanBarStyle(parseInt(document.getElementById("bar").value, 10));
 		let bar = _eta.BARS[bari];
 		let cF = bar[bar.length-1]; // full is at the end
 		let cE = bar.length < 2 ? "" : bar[0]; // empty is the first, or empty
@@ -275,6 +275,7 @@ var _eta = {
 		let sms = parseInt(params.get("s"), 10); // start ms
 		let lms = parseInt(params.get("l"), 10); // last ms
 		let toms = parseInt(params.get("to"), 10); // refresh rate
+		let bar = parseInt(params.get("b"), 10); // bar style
 		let nt = params.get("tt");
 
 		if (isNaN(c) || isNaN(sms) || isNaN(o)) return; // we need this
@@ -286,6 +287,7 @@ var _eta = {
 		document.getElementById("start_ms").value = sms;
 		document.getElementById("last_ms").value = lms;
 		document.getElementById("titles").value = nt;
+		document.getElementById("bar").value = _eta.CleanBarStyle(bar);
 
 		// this function should limit itself to set values on the doc elements, load handles the rest
 		// this is to support load and reset behaving similar
@@ -298,7 +300,9 @@ var _eta = {
 		u.searchParams.set("s", _eta.st); // start
 		u.searchParams.set("l", _eta.l); // last
 		u.searchParams.set("to", _eta.to) // refresh
-		u.searchParams.set("tt", document.getElementById("titles").value) // title
+		u.searchParams.set("b", document.getElementById("bar").value) // refresh
+
+		u.searchParams.set("tt", document.getElementById("titles").value) // title (last on purpose as it could get long)
 		window.history.replaceState({}, "E.T.A. " +_eta.MS2TD(_eta.e), u);
 	}
 };
