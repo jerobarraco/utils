@@ -15,13 +15,21 @@ var _eta = {
 	ca: 0,//current avg
 	ce: 0,//current eta
 	timer: 0,
-	bar: 0, // TODO somewhere to set this
+	// <progress> is too mainstream (and i also overlooked it >_>')
+	// Some bars taken from https://github.com/Changaco/unicode-progress-bars/blob/master/generator.html (but code is mine)
+	// 1st char is the empty one, last is the full, the rest (including 1st is middle)
 	BARS:[
-		"█▁▏▎▍▌▋▋▉",
-		"█ ▏▎▍▌▋▋▉",
-		"█░▒▓",
-		"█░",
-		"█",
+		"▁▂▃▄▅▆▇█",
+		" ▁▂▃▄▅▆▇█",
+		"▁▏▎▍▌▋▋▉█",
+		" ▏▎▍▌▋▋▉█",
+		"░▒▓█",
+		"⣀⣄⣤⣦⣶⣷⣿",
+		"⣀⣄⣆⣇⣧⣷⣿",
+		"□▥▦▨▩▣■",
+		"◯⬤",
+		"░█",
+		"█", // 1 char = empty is ""
 	],
 	Stop(){
 		clearTimeout(_eta.timer);
@@ -198,14 +206,14 @@ var _eta = {
 	},
 	GetProgressBar(p) {
 		let bari = parseInt(document.getElementById("bar").value, 10);
-		bari = isNaN(bari) ? _eta.bar : bari;
-		bari = bari < _eta.BARS.length ? bari: 0;
-		_eta.bar = bari;
+		bari = isNaN(bari) ? 0 : bari;
+		bari = bari < _eta.BARS.length ? bari: _eta.BARS.length -1;
 
-		let bar = _eta.BARS[_eta.bar];
-		let cF = bar[0];
-		let cE = bar.length < 2 ? "" : bar[1];
-		let cM = bar.length < 2 ? "" : (bar.length < 3 ? bar[1] : bar.slice(1));
+		let bar = _eta.BARS[bari];
+		let cF = bar[bar.length-1]; // full is at the end
+		let cE = bar.length < 2 ? "" : bar[0]; // empty is the first, or empty
+		 //include empty as part of partial, looks better, and works better (see 'if' below)
+		let cP = bar.length < 2 ? "" : bar.slice(0, -1);
 
 		let len = 20;
 		let done = p*len;
@@ -215,9 +223,9 @@ var _eta = {
 
 		let b = "";
 		b += cF.repeat(full);
-		if (partial > 0 && cM.length > 0) {
-			let i = Math.floor(partial * cM.length);
-			b += cM[i];
+		if (partial > 0 && cP.length > 0) { // if theres no partial, theres no empty either, we can skip
+			let i = Math.floor(partial * cP.length);
+			b += cP[i];
 		}
 		if (empty>=0) {
 			b += cE.repeat(empty);

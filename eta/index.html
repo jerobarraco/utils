@@ -24,14 +24,17 @@
 	Refresh (ms)<br/>
 	<input type="number" id="toms" value="1000" max="9999999999999999999999999999999999999999999999999999999999999999"/>
 	<br/>
-	Bar Style<br/>
-	<input type="number" id="bar" value="0" max="4"/>
 	<br/>
 	---------------[RE]LOAD---------------<br/>
 	Count <input type="number" id="start_count" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
 <br/>
-	StartMS <input type="number" id="start_ms" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/> <br/>
+	StartMS <input type="number" id="start_ms" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
+	<br/>
 	LastMS <input type="number" id="last_ms" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
+	<br/>
+	Bar Style
+	<input type="number" id="bar" value="0" max="10" min="0"/>
+	<br/>
 <br/>
 	<input type="button" name="name" value="Re/Load" onclick="_eta.Load()"/>
 </body>
