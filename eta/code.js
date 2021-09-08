@@ -15,6 +15,14 @@ var _eta = {
 	ca: 0,//current avg
 	ce: 0,//current eta
 	timer: 0,
+	bar: 0, // TODO somewhere to set this
+	BARS:[
+		"█▁▏▎▍▌▋▋▉",
+		"█ ▏▎▍▌▋▋▉",
+		"█░▒▓",
+		"█░",
+		"█",
+	],
 	Stop(){
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
@@ -189,6 +197,16 @@ var _eta = {
 		return t + " " + vv;
 	},
 	GetProgressBar(p) {
+		let bari = parseInt(document.getElementById("bar").value, 10);
+		bari = isNaN(bari) ? _eta.bar : bari;
+		bari = bari < _eta.BARS.length ? bari: 0;
+		_eta.bar = bari;
+
+		let bar = _eta.BARS[_eta.bar];
+		let cF = bar[0];
+		let cE = bar.length < 2 ? "" : bar[1];
+		let cM = bar.length < 2 ? "" : (bar.length < 3 ? bar[1] : bar.slice(1));
+
 		let len = 20;
 		let done = p*len;
 		let full = Math.floor(done);
@@ -196,9 +214,14 @@ var _eta = {
 		let partial = done - full;
 
 		let b = "";
-		b += "&#x2588;".repeat(full);
-		b += partial == 0 ? "" : (partial < 0.5 ? "&#x2592;" : "&#x2593;");
-		b += "&#x2591;".repeat(empty);
+		b += cF.repeat(full);
+		if (partial > 0 && cM.length > 0) {
+			let i = Math.floor(partial * cM.length);
+			b += cM[i];
+		}
+		if (empty>=0) {
+			b += cE.repeat(empty);
+		}
 		return b;
 	},
 	ShowSlow() {
