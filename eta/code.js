@@ -20,8 +20,8 @@ var _eta = {
 	// 1st char is the empty one, last is the full, the rest (including 1st is middle)
 	BARS:[
 		"▁▂▃▄▅▆▇█",
-		" ▁▂▃▄▅▆▇█",
 		"▁▏▎▍▌▋▋▉█",
+		" ▁▂▃▄▅▆▇█",
 		" ▏▎▍▌▋▋▉█",
 		"░▒▓█",
 		"⣀⣄⣤⣦⣶⣷⣿",
@@ -29,7 +29,7 @@ var _eta = {
 		"□▥▦▨▩▣■",
 		"◯⬤",
 		"░█",
-		"█", // 1 char = empty is ""
+		"█", // 1 char means that the empty cell is ""
 	],
 	Stop(){
 		clearTimeout(_eta.timer);
@@ -215,7 +215,7 @@ var _eta = {
 		 //include empty as part of partial, looks better, and works better (see 'if' below)
 		let cP = bar.length < 2 ? "" : bar.slice(0, -1);
 
-		let len = 20;
+		let len = 40; // progress bar length
 		let done = p*len;
 		let full = Math.floor(done);
 		let empty = len - Math.ceil(done);
@@ -233,32 +233,31 @@ var _eta = {
 		return b;
 	},
 	ShowSlow() {
-		let p = _eta.c/_eta.o;
-		let t = "";
-		t += _eta.GetProgressBar(p) + "<br>";
-		t += "Completion	: "+ (p*100).toFixed(8) + "%<br>";
-		t += "Progress		: "+ _eta.o +" -"+(_eta.o-_eta.c) + " = " + _eta.c + "<br>";
-		t += "Acum.			: "+_eta.MS2TD(_eta.s) +"<br/>";
-		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
-		t += "--------------------------------------";
-		document.getElementById("text_slow").innerHTML = t;
-	},
-	Show() {
-		let sa = _eta.Simplify(_eta.a);
+    	let sa = _eta.Simplify(_eta.a);
 		let sl = _eta.Simplify(_eta.ld);
 		let p = _eta.c/_eta.o;
 
 		let t = "";
-		t += "ETA			: "+_eta.MS2TD(_eta.e) +"<br>";
-		t += "Avg. Dur.		: "+_eta.MS2TD(_eta.a) +"<br>";
-		t += "Last Dur.		: "+_eta.MS2TD(_eta.ld) +"<br>";
-		t += "Avg. Speed	: "+sa+"<br/>";
-		t += "Last Speed	: "+sl+"<br/>";
-		t += "--------------------------------------<br/>";
-		t += "CalcDur.		: "+_eta.MS2TD(_eta.cs) +"<br>";
-		t += "CalcAvg.		: "+_eta.MS2TD(_eta.ca) +"<br>";
-		t += "CalcE.T.A.	: "+_eta.MS2TD(_eta.ce) +"<br>";
-		t += "--------------------------------------<br/>";
+		t += _eta.GetProgressBar(p) + "<br/>";
+		t += "Completion&#9;: "+ (p*100).toFixed(8) + "%<br/>";
+		t += "Progress&#9;: "+ _eta.o +" -"+(_eta.o-_eta.c) + " = " + _eta.c + "<br/>";
+   		t += "Last Speed&#9;: "+sl+"<br/>";
+		t += "Avg. Speed&#9;: "+sa+"<br/>";
+		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
+		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
+		t += "Acum.&#9;&#9;: "+_eta.MS2TD(_eta.s) +"<br/>";
+		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
+		t += "----------------------------------------";
+		//t = t.replace(/	/g, "&#9;"); // works because in the html we have the <pre> tag
+		document.getElementById("text_slow").innerHTML = t;
+	},
+	Show() {
+		let t = "";
+		t += "ETA&#9;&#9;: "+_eta.MS2TD(_eta.e) +"<br/>";
+		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
+		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cs) +"<br/>";
+		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
+		t += "----------------------------------------<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
 	SetCountBtnText(t) {
