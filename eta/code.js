@@ -15,6 +15,7 @@ var _eta = {
 	ca: 0,//current avg
 	ce: 0,//current eta
 	timer: 0,
+	bar_len: 24,
 	// <progress> is too mainstream (and i also overlooked it >_>')
 	// Some bars taken from https://github.com/Changaco/unicode-progress-bars/blob/master/generator.html (but code is mine)
 	// 1st char is the empty one, last is the full, the rest (including 1st is middle)
@@ -31,20 +32,36 @@ var _eta = {
 		"░█",
 		"█", // 1 char means that the empty cell is ""
 	],
-	Stop(){
+	ClearTimer(){
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
+	},
+	Stop(){
+		_eta.ClearTimer();
 		_eta.SetCountBtnText("Continue");
 		// don't change reset to start, as it actually clicking it will still reset
 	},
 	Tick(){
+		_eta.ClearTimer();
+    	// done at the start to avoid adding a delay
 		_eta.timer = setTimeout(_eta.Tick, _eta.to);
+
 		let n = +(new Date());
 		_eta.cs = n - _eta.l;
 		_eta.ca = (_eta.s + _eta.cs)/_eta.c;
 		_eta.ce = (_eta.o -_eta.c)*_eta.ca;
 		_eta.e = ((_eta.o -_eta.c)*_eta.a)-_eta.cs;
+
 		_eta.Show();
+	},
+	TryTick(){
+		//// Updates ui, tries to start, stops if reached
+		_eta.Tick(); // will do Show properly, as it updates the values.
+		_eta.ShowSlow();
+
+		 // notice stop below the tick above
+		if(_eta.c >= _eta.o)
+		 	_eta.Stop(); // stop when target reached
 	},
 	Count(){
 		//start if never started
@@ -55,11 +72,12 @@ var _eta = {
 
 		// restart the timer if its stopped
 		if(_eta.timer == 0) {
-			_eta.Tick();
+			_eta.TryTick();
 			_eta.SetCountBtnText("Count");
 			return;
 		}
 
+		// update values
 		let n = +(new Date());
 		_eta.ld = n - _eta.l;
 		_eta.l = n;
@@ -67,17 +85,14 @@ var _eta = {
 		// _eta.s += _eta.ld; might be less accurate 
 		_eta.s = (_eta.l - _eta.st);// might be more accurate 
 		_eta.a = _eta.s/_eta.c;
-		_eta.Show();
-		
-		if(_eta.c == _eta.o) _eta.Stop(); // stop when target reached
 
+		_eta.TryTick();
 
 		// on count set load's count value
 		document.getElementById("start_count").value = _eta.c;
 		// and last ms
 		document.getElementById("last_ms").value = _eta.l;
 		_eta.SaveToUrl(); // write url
-		_eta.ShowSlow();
 	},
 	Restart() { // will reset stuff
 		_eta.Stop();
@@ -85,25 +100,26 @@ var _eta = {
 		_eta.e = 0;//eta
 		_eta.s = 0;//sum
 		_eta.a = 0;//avg
-		_eta.l = 0;//last ms
 		_eta.ld = 0;//last_duration
 		_eta.sp = 0;//speed
-		_eta.cs = 0;//current sp
+		_eta.cs = 0;//current sp (last dur)
 		_eta.ca = 0;//current avg
 		_eta.ce = 0;//current eta
 		_eta.o = parseInt(document.getElementById("cant").value);
 		_eta.to = parseInt(document.getElementById("toms").value);
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
 		_eta.st = _eta.l; //start ms
-		_eta.Tick();
 
-		_eta.SetCountBtnText("Count");
 		_eta.SetTitle(document.getElementById("titles").value)
+		_eta.SetCountBtnText("Count");
 		document.getElementById("b_reset").value = "Restart";
-
 		// beware conflicts with load
 		document.getElementById("start_ms").value = _eta.st;
+		document.getElementById("start_count").value = 0; // notice it collides with load
 		// not saving to url here because it will mess with load, and reset
+
+		//update ui and start ticking
+		_eta.TryTick();
 	},
 	Reset() {
 		_eta.Restart();
@@ -111,15 +127,16 @@ var _eta = {
 		_eta.ShowSlow();
 	},
 	Load() {
-		// cache sms because "restart" will override it with last (aka now)
+		// cache sms and count because "restart" will override it with last (aka now)
 		let sms = parseInt(document.getElementById("start_ms").value);
-		_eta.Restart(); //last is set to now. but we reload it below
+		let c = parseInt(document.getElementById("start_count").value);
+		_eta.Restart(); //last is set to now. but we reload it below. It also starts the tick
 		// restore original startms
 		document.getElementById("start_ms").value = sms;
 		_eta.st = sms;
-
 		// load count
-		_eta.c = parseInt(document.getElementById("start_count").value);
+		_eta.c = c;
+		document.getElementById("start_count").value = c;
 
 		// try to load last ms if possible otherwise "Restart" above makes it default to now
 		let nl = parseInt(document.getElementById("last_ms").value);
@@ -132,6 +149,7 @@ var _eta = {
 		_eta.ld = _eta.a;
 
 		_eta.SaveToUrl();
+		_eta.TryTick();
 		_eta.ShowSlow();
 	},
 	MS2TD(v, simple){
@@ -215,10 +233,10 @@ var _eta = {
 		 //include empty as part of partial, looks better, and works better (see 'if' below)
 		let cP = bar.length < 2 ? "" : bar.slice(0, -1);
 
-		let len = 40; // progress bar length
+		let len = _eta.bar_len;
 		let done = p*len;
-		let full = Math.floor(done);
 		let empty = len - Math.ceil(done);
+		let full = Math.floor(done);
 		let partial = done - full;
 
 		let b = "";
@@ -233,7 +251,7 @@ var _eta = {
 		return b;
 	},
 	ShowSlow() {
-    	let sa = _eta.Simplify(_eta.a);
+		let sa = _eta.Simplify(_eta.a);
 		let sl = _eta.Simplify(_eta.ld);
 		let p = _eta.c/_eta.o;
 
