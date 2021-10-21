@@ -1,5 +1,10 @@
 // Copyright 2015-2021 Jerónimo Barraco Mármol GPL v3
 
+function pad(n, d) {
+	return ('0000'+ n).slice(-d); // https://stackoverflow.com/q/10073699/260242
+	// yes i'm aware of padStart, but look at this, is so beautifully simple and so much more compatible and less pretentious... (and more cross language)
+}
+
 var _eta = {
 	to: 1000,//timeout
 	c: 0,//count
@@ -172,7 +177,7 @@ var _eta = {
 		v -= h;
 		v /= 24;
 
-		t = h + ":" + m + ":" + s + "." + ms;
+		t = pad(h, 2) + ":" + pad(m, 2)+ ":" + pad(s, 2) + "." + pad(ms, 3);
 		if (simple){
 			return v + "d " + t;
 		}
