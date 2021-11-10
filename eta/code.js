@@ -9,7 +9,7 @@ var _eta = {
 	to: 1000,//timeout
 	c: 0,//count
 	st: 0, //start time
-	s: 0,//sum (total duration)
+	duration: 0, //duration (sum)
 	l: 0,//last ms
 	ld: 0,//last dur
 	a: 0,//avg
@@ -54,7 +54,7 @@ var _eta = {
 
 		let n = +(new Date());
 		_eta.cd = n - _eta.l;
-		_eta.ca = (_eta.s + _eta.cd)/_eta.c;
+		_eta.ca = (_eta.duration + _eta.cd)/_eta.c;
 		let remaining = (_eta.o -_eta.c -_eta.offset);
 		_eta.ce = remaining*_eta.ca;
 		_eta.e = (remaining*_eta.a)-_eta.cd;
@@ -89,9 +89,9 @@ var _eta = {
 		_eta.ld = n - _eta.l;
 		_eta.l = n;
 		_eta.c += 1;
-		// _eta.s += _eta.ld; might be less accurate 
-		_eta.s = (_eta.l - _eta.st);// might be more accurate 
-		_eta.a = _eta.s/_eta.c;
+		// _eta.duration += _eta.ld; might be less accurate
+		_eta.duration = (_eta.l - _eta.st);// might be more accurate
+		_eta.a = _eta.duration/_eta.c;
 
 		_eta.TryTick();
 
@@ -107,7 +107,7 @@ var _eta = {
 		_eta.Stop();
 		_eta.c = 0;
 		_eta.e = 0;//eta
-		_eta.s = 0;//sum
+		_eta.duration = 0;//sum
 		_eta.a = 0;//avg
 		_eta.ld = 0;//last_duration
 		_eta.sp = 0;//speed
@@ -157,8 +157,8 @@ var _eta = {
 			_eta.l = nl;
 		}
 
-		_eta.s = (_eta.l - _eta.st);
-		_eta.a = _eta.s/_eta.c;
+		_eta.duration = (_eta.l - _eta.st);
+		_eta.a = _eta.duration/_eta.c;
 		_eta.ld = _eta.a;
 
 		// update ui
@@ -278,7 +278,7 @@ var _eta = {
 		t += "Avg. Speed&#9;: "+sa+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
-		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.s) +"<br/>";
+		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";
 		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
 		t += "----------------------------------------";
 		//t = t.replace(/	/g, "&#9;"); // works because in the html we have the <pre> tag
@@ -290,8 +290,8 @@ var _eta = {
 		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
 		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cd) +"<br/>";
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
-		t += "Est.Dur.&#9;: "+_eta.MS2TD(_eta.e + _eta.s) +"<br/>";
-		t += "Est.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.s) +"<br/>";
+		t += "Est.Dur.&#9;: "+_eta.MS2TD(_eta.e + _eta.duration) +"<br/>";
+		t += "Est.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
 		t += "----------------------------------------<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
