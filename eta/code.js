@@ -102,7 +102,8 @@ var _eta = {
 		_eta.SaveToUrl(); // write url
 	},
 	Restart() {
-		// Reset using the document, but not the load part. Sets the rest to initial value.
+		// Reset using the document, but not the re/load part. Sets the rest to initial value.
+		// Also called by Load
 		_eta.Stop();
 		_eta.c = 0;
 		_eta.e = 0;//eta
@@ -131,7 +132,7 @@ var _eta = {
 		_eta.TryTick();
 	},
 	Reset() {
-		// Reset using the document, but not the load part
+		// Reset using the document, but not the re/load part
 		_eta.Restart();
 		_eta.SaveToUrl();
 		_eta.ShowSlow();
@@ -272,7 +273,7 @@ var _eta = {
 		let t = "";
 		t += _eta.GetProgressBar(p) + "<br/>";
 		t += "Completion&#9;: "+ (p*100).toFixed(8) + "%<br/>";
-		t += "Progress&#9;: "+ _eta.o +" -"+(off_obj-_eta.c) + " -" +_eta.offset + " = " + _eta.c + "<br/>";
+		t += "Progress&#9;: "+ _eta.o +" -(" +_eta.offset +") -"+(off_obj-_eta.c) +  " = " + _eta.c + "<br/>";
    		t += "Last Speed&#9;: "+sl+"<br/>";
 		t += "Avg. Speed&#9;: "+sa+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
@@ -305,9 +306,10 @@ var _eta = {
 		let params = new URLSearchParams(document.location.search.substring(1));
 		let c = parseInt(params.get("c"), 10); // start count
 		let o = parseInt(params.get("o"), 10); // objective
+		let of = parseInt(params.get("of"), 10) || 0; // objective
 		let sms = parseInt(params.get("s"), 10); // start ms
 		let lms = parseInt(params.get("l"), 10); // last ms
-		let toms = parseInt(params.get("to"), 10); // refresh rate
+		let toms = parseInt(params.get("to"), 10) || 1000; // refresh rate
 		let bar = parseInt(params.get("b"), 10); // bar style
 		let nt = params.get("tt");
 
@@ -315,7 +317,8 @@ var _eta = {
 		if (isNaN(lms)) lms = +new Date(); //gets current milliseconds by default. meh
 
 		document.getElementById("cant").value = o;
-		document.getElementById("toms").value = isNaN(toms) ? 1000 : toms;
+		document.getElementById("offset").value = of;
+		document.getElementById("toms").value = toms;
 		document.getElementById("start_count").value = c;
 		document.getElementById("start_ms").value = sms;
 		document.getElementById("last_ms").value = lms;
@@ -330,10 +333,11 @@ var _eta = {
 		let u = new URL(document.location);
 		u.searchParams.set("c", _eta.c); // count 
 		u.searchParams.set("o", _eta.o); // objective
+		u.searchParams.set("of", _eta.offset);
 		u.searchParams.set("s", _eta.st); // start
 		u.searchParams.set("l", _eta.l); // last
 		u.searchParams.set("to", _eta.to) // refresh
-		u.searchParams.set("b", document.getElementById("bar").value) // refresh
+		u.searchParams.set("b", document.getElementById("bar").value) // bar style
 
 		u.searchParams.set("tt", document.getElementById("titles").value) // title (last on purpose as it could get long)
 		window.history.replaceState({}, "E.T.A. " +_eta.MS2TD(_eta.e), u);
