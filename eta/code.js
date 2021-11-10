@@ -9,18 +9,19 @@ var _eta = {
 	to: 1000,//timeout
 	c: 0,//count
 	st: 0, //start time
-	s: 0,//sum
+	s: 0,//sum (total duration)
 	l: 0,//last ms
 	ld: 0,//last dur
 	a: 0,//avg
 	o: 0,//objective
 	e: 0,//eta
 	sp: 0,//speed
-	cs: 0,//current sp
+	cd: 0,//current duration
 	ca: 0,//current avg
 	ce: 0,//current eta
+	offset: 0,
 	timer: 0,
-	bar_len: 24,
+	BAR_LEN: 24,
 	// <progress> is too mainstream (and i also overlooked it >_>')
 	// Some bars taken from https://github.com/Changaco/unicode-progress-bars/blob/master/generator.html (but code is mine)
 	// 1st char is the empty one, last is the full, the rest (including 1st is middle)
@@ -52,10 +53,11 @@ var _eta = {
 		_eta.timer = setTimeout(_eta.Tick, _eta.to);
 
 		let n = +(new Date());
-		_eta.cs = n - _eta.l;
-		_eta.ca = (_eta.s + _eta.cs)/_eta.c;
-		_eta.ce = (_eta.o -_eta.c)*_eta.ca;
-		_eta.e = ((_eta.o -_eta.c)*_eta.a)-_eta.cs;
+		_eta.cd = n - _eta.l;
+		_eta.ca = (_eta.s + _eta.cd)/_eta.c;
+		let remaining = (_eta.o -_eta.c -_eta.offset);
+		_eta.ce = remaining*_eta.ca;
+		_eta.e = (remaining*_eta.a)-_eta.cd;
 
 		_eta.Show();
 	},
@@ -65,7 +67,7 @@ var _eta = {
 		_eta.ShowSlow();
 
 		 // notice stop below the tick above
-		if(_eta.c >= _eta.o)
+		if(_eta.c >= (_eta.o - _eta.offset))
 		 	_eta.Stop(); // stop when target reached
 	},
 	Count(){
@@ -99,7 +101,8 @@ var _eta = {
 		document.getElementById("last_ms").value = _eta.l;
 		_eta.SaveToUrl(); // write url
 	},
-	Restart() { // will reset stuff
+	Restart() {
+		// Reset using the document, but not the load part. Sets the rest to initial value.
 		_eta.Stop();
 		_eta.c = 0;
 		_eta.e = 0;//eta
@@ -107,9 +110,10 @@ var _eta = {
 		_eta.a = 0;//avg
 		_eta.ld = 0;//last_duration
 		_eta.sp = 0;//speed
-		_eta.cs = 0;//current sp (last dur)
+		_eta.cd = 0;//current duration (last dur)
 		_eta.ca = 0;//current avg
 		_eta.ce = 0;//current eta
+		_eta.offset = parseInt(document.getElementById("offset").value);
 		_eta.o = parseInt(document.getElementById("cant").value);
 		_eta.to = parseInt(document.getElementById("toms").value);
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
@@ -127,11 +131,14 @@ var _eta = {
 		_eta.TryTick();
 	},
 	Reset() {
+		// Reset using the document, but not the load part
 		_eta.Restart();
 		_eta.SaveToUrl();
 		_eta.ShowSlow();
 	},
 	Load() {
+		// Loads from document. LoadFromUrl calls this.
+
 		// cache sms and count because "restart" will override it with last (aka now)
 		let sms = parseInt(document.getElementById("start_ms").value);
 		let c = parseInt(document.getElementById("start_count").value);
@@ -153,6 +160,7 @@ var _eta = {
 		_eta.a = _eta.s/_eta.c;
 		_eta.ld = _eta.a;
 
+		// update ui
 		_eta.SaveToUrl();
 		_eta.TryTick();
 		_eta.ShowSlow();
@@ -238,7 +246,7 @@ var _eta = {
 		 //include empty as part of partial, looks better, and works better (see 'if' below)
 		let cP = bar.length < 2 ? "" : bar.slice(0, -1);
 
-		let len = _eta.bar_len;
+		let len = _eta.BAR_LEN;
 		let done = p*len;
 		let empty = len - Math.ceil(done);
 		let full = Math.floor(done);
@@ -258,17 +266,18 @@ var _eta = {
 	ShowSlow() {
 		let sa = _eta.Simplify(_eta.a);
 		let sl = _eta.Simplify(_eta.ld);
-		let p = _eta.c/_eta.o;
+		let off_obj = _eta.o - _eta.offset;
+		let p = _eta.c/off_obj;
 
 		let t = "";
 		t += _eta.GetProgressBar(p) + "<br/>";
 		t += "Completion&#9;: "+ (p*100).toFixed(8) + "%<br/>";
-		t += "Progress&#9;: "+ _eta.o +" -"+(_eta.o-_eta.c) + " = " + _eta.c + "<br/>";
+		t += "Progress&#9;: "+ _eta.o +" -"+(off_obj-_eta.c) + " -" +_eta.offset + " = " + _eta.c + "<br/>";
    		t += "Last Speed&#9;: "+sl+"<br/>";
 		t += "Avg. Speed&#9;: "+sa+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
-		t += "Acum.&#9;&#9;: "+_eta.MS2TD(_eta.s) +"<br/>";
+		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.s) +"<br/>";
 		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
 		t += "----------------------------------------";
 		//t = t.replace(/	/g, "&#9;"); // works because in the html we have the <pre> tag
@@ -278,8 +287,10 @@ var _eta = {
 		let t = "";
 		t += "ETA&#9;&#9;: "+_eta.MS2TD(_eta.e) +"<br/>";
 		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
-		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cs) +"<br/>";
+		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cd) +"<br/>";
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
+		t += "Est.Dur.&#9;: "+_eta.MS2TD(_eta.e + _eta.s) +"<br/>";
+		t += "Est.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.s) +"<br/>";
 		t += "----------------------------------------<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
