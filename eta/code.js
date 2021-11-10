@@ -6,21 +6,31 @@ function pad(n, d) {
 }
 
 var _eta = {
-	to: 1000,//timeout
-	c: 0,//count
+	objective: 0,
+	count: 0,
+	offset: 0,
+	off_objective: 0,
+	off_count: 0,
 	st: 0, //start time
 	duration: 0, //duration (sum)
 	l: 0,//last ms
 	ld: 0,//last dur
 	a: 0,//avg
-	o: 0,//objective
 	e: 0,//eta
 	sp: 0,//speed
 	cd: 0,//current duration
 	ca: 0,//current avg
 	ce: 0,//current eta
-	offset: 0,
+	// non eta logic vars
 	timer: 0,
+	to: 1000,//timeout
+	/// Elements
+	ELEMENTS: {
+		count:"count",
+		offset:"offset",
+		objective:"objective"
+	},
+	//// bars
 	BAR_LEN: 24,
 	// <progress> is too mainstream (and i also overlooked it >_>')
 	// Some bars taken from https://github.com/Changaco/unicode-progress-bars/blob/master/generator.html (but code is mine)
@@ -38,6 +48,7 @@ var _eta = {
 		"░█",
 		"█", // 1 char means that the empty cell is ""
 	],
+	/// functions
 	ClearTimer(){
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
@@ -54,9 +65,12 @@ var _eta = {
 
 		let n = +(new Date());
 		_eta.cd = n - _eta.l;
-		_eta.ca = (_eta.duration + _eta.cd)/_eta.c;
-		let remaining = (_eta.o -_eta.c -_eta.offset);
+
+		_eta.ca = (_eta.duration + _eta.cd)/_eta.off_count;
+
+		let remaining = (_eta.objective - _eta.count);
 		_eta.ce = remaining*_eta.ca;
+		// eta, subtracts the elapsed time
 		_eta.e = (remaining*_eta.a)-_eta.cd;
 
 		_eta.Show();
@@ -67,7 +81,7 @@ var _eta = {
 		_eta.ShowSlow();
 
 		 // notice stop below the tick above
-		if(_eta.c >= (_eta.o - _eta.offset))
+		if(_eta.count >= _eta.objective)
 		 	_eta.Stop(); // stop when target reached
 	},
 	Count(){
@@ -88,15 +102,16 @@ var _eta = {
 		let n = +(new Date());
 		_eta.ld = n - _eta.l;
 		_eta.l = n;
-		_eta.c += 1;
+		_eta.count += 1;
+		_eta.off_count = _eta.count - _eta.offset;
 		// _eta.duration += _eta.ld; might be less accurate
 		_eta.duration = (_eta.l - _eta.st);// might be more accurate
-		_eta.a = _eta.duration/_eta.c;
+		_eta.a = _eta.duration/_eta.off_count;
 
 		_eta.TryTick();
 
 		// on count set load's count value
-		document.getElementById("start_count").value = _eta.c;
+		document.getElementById(_eta.ELEMENTS.count).value = _eta.count;
 		// and last ms
 		document.getElementById("last_ms").value = _eta.l;
 		_eta.SaveToUrl(); // write url
@@ -105,7 +120,7 @@ var _eta = {
 		// Reset using the document, but not the re/load part. Sets the rest to initial value.
 		// Also called by Load
 		_eta.Stop();
-		_eta.c = 0;
+		//_eta.count = 0;
 		_eta.e = 0;//eta
 		_eta.duration = 0;//sum
 		_eta.a = 0;//avg
@@ -114,18 +129,20 @@ var _eta = {
 		_eta.cd = 0;//current duration (last dur)
 		_eta.ca = 0;//current avg
 		_eta.ce = 0;//current eta
-		_eta.offset = parseInt(document.getElementById("offset").value);
-		_eta.o = parseInt(document.getElementById("cant").value);
+		_eta.count = _eta.offset = _eta.GetDocIntValue(_eta.ELEMENTS.offset);
+		_eta.off_count = _eta.count - _eta.offset;
+		_eta.objective = _eta.GetDocIntValue(_eta.ELEMENTS.objective);
+		_eta.off_objective = _eta.objective - _eta.offset;
 		_eta.to = parseInt(document.getElementById("toms").value);
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
 		_eta.st = _eta.l; //start ms
 
-		_eta.SetTitle(document.getElementById("titles").value)
+		_eta.SetTitle(document.getElementById("titles").value);
 		_eta.SetCountBtnText("Count");
 		document.getElementById("b_reset").value = "Restart";
 		// beware conflicts with load
 		document.getElementById("start_ms").value = _eta.st;
-		document.getElementById("start_count").value = 0; // notice it collides with load
+		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count); // notice it collides with load
 		// not saving to url here because it will mess with load, and reset
 
 		//update ui and start ticking
@@ -142,14 +159,19 @@ var _eta = {
 
 		// cache sms and count because "restart" will override it with last (aka now)
 		let sms = parseInt(document.getElementById("start_ms").value);
-		let c = parseInt(document.getElementById("start_count").value);
-		_eta.Restart(); //last is set to now. but we reload it below. It also starts the tick
+		let c = _eta.GetDocIntValue(_eta.ELEMENTS.count) || 0;
+
+		// Reinitialize
+		_eta.Restart();
+		// last is set to now. but we reload it below. It also starts the tick
+
 		// restore original startms
 		document.getElementById("start_ms").value = sms;
 		_eta.st = sms;
 		// load count
-		_eta.c = c;
-		document.getElementById("start_count").value = c;
+		_eta.count = c;
+		_eta.SetDocValue(_eta.ELEMENTS.count, c);
+		_eta.off_count = _eta.count - _eta.offset;
 
 		// try to load last ms if possible otherwise "Restart" above makes it default to now
 		let nl = parseInt(document.getElementById("last_ms").value);
@@ -158,7 +180,7 @@ var _eta = {
 		}
 
 		_eta.duration = (_eta.l - _eta.st);
-		_eta.a = _eta.duration/_eta.c;
+		_eta.a = _eta.duration/_eta.count;
 		_eta.ld = _eta.a;
 
 		// update ui
@@ -240,7 +262,9 @@ var _eta = {
 		return isNaN(bar) || bar < 0 ? 0 : (bar < _eta.BARS.length ? bar : _eta.BARS.length -1);
 	},
 	GetProgressBar(p) {
-		let bari = _eta.CleanBarStyle(parseInt(document.getElementById("bar").value, 10));
+		if (p<0) return "";
+
+		let bari = _eta.CleanBarStyle(_eta.GetDocIntValue("bar"));
 		let bar = _eta.BARS[bari];
 		let cF = bar[bar.length-1]; // full is at the end
 		let cE = bar.length < 2 ? "" : bar[0]; // empty is the first, or empty
@@ -267,13 +291,15 @@ var _eta = {
 	ShowSlow() {
 		let sa = _eta.Simplify(_eta.a);
 		let sl = _eta.Simplify(_eta.ld);
-		let off_obj = _eta.o - _eta.offset;
-		let p = _eta.c/off_obj;
+		let p = _eta.off_count/_eta.off_objective;
 
 		let t = "";
 		t += _eta.GetProgressBar(p) + "<br/>";
 		t += "Completion&#9;: "+ (p*100).toFixed(8) + "%<br/>";
-		t += "Progress&#9;: "+ _eta.o +" -(" +_eta.offset +") -"+(off_obj-_eta.c) +  " = " + _eta.c + "<br/>";
+		t += _eta.offset ?
+			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.offset + " +"+_eta.off_count +" = " +_eta.count +"<br/>" :
+			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.count + "<br/>"
+		;
    		t += "Last Speed&#9;: "+sl+"<br/>";
 		t += "Avg. Speed&#9;: "+sa+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
@@ -290,8 +316,8 @@ var _eta = {
 		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
 		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cd) +"<br/>";
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
-		t += "Est.Dur.&#9;: "+_eta.MS2TD(_eta.e + _eta.duration) +"<br/>";
-		t += "Est.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
+		t += "E.Dur.&#9;&#9;: "+_eta.MS2TD(_eta.e + _eta.duration) +"<br/>";
+		t += "E.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
 		t += "----------------------------------------<br/>";
 		document.getElementById("text").innerHTML = t;
 	},
@@ -301,6 +327,12 @@ var _eta = {
 	SetTitle(nt) {
 		document.getElementById("titles").value = nt;
 		document.title = "ETA.: " + nt;
+	},
+	SetDocValue(el, val) {
+		document.getElementById(el).value = val;
+	},
+	GetDocIntValue(el) {
+		return parseInt(document.getElementById(el).value, 10);
 	},
 	LoadFromUrl() {
 		let params = new URLSearchParams(document.location.search.substring(1));
@@ -316,10 +348,10 @@ var _eta = {
 		if (isNaN(c) || isNaN(sms) || isNaN(o)) return; // we need this
 		if (isNaN(lms)) lms = +new Date(); //gets current milliseconds by default. meh
 
-		document.getElementById("cant").value = o;
-		document.getElementById("offset").value = of;
+		_eta.SetDocValue(_eta.ELEMENTS.objective, o);
+		_eta.SetDocValue(_eta.ELEMENTS.offset, of);
 		document.getElementById("toms").value = toms;
-		document.getElementById("start_count").value = c;
+		_eta.SetDocValue(_eta.ELEMENTS.count, c);
 		document.getElementById("start_ms").value = sms;
 		document.getElementById("last_ms").value = lms;
 		document.getElementById("titles").value = nt;
@@ -331,8 +363,8 @@ var _eta = {
 	},
 	SaveToUrl() {
 		let u = new URL(document.location);
-		u.searchParams.set("c", _eta.c); // count 
-		u.searchParams.set("o", _eta.o); // objective
+		u.searchParams.set("c", _eta.count);
+		u.searchParams.set("o", _eta.objective); // objective
 		u.searchParams.set("of", _eta.offset);
 		u.searchParams.set("s", _eta.st); // start
 		u.searchParams.set("l", _eta.l); // last
