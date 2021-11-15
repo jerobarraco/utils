@@ -24,11 +24,13 @@ var _eta = {
 	// non eta logic vars
 	timer: 0,
 	to: 1000,//timeout
+	// maybe move the consts to an _etac object
 	/// Elements
 	ELEMENTS: {
 		count:"count",
 		offset:"offset",
-		objective:"objective"
+		objective:"objective",
+		start:"start_ms",
 	},
 	//// bars
 	BAR_LEN: 24,
@@ -48,7 +50,8 @@ var _eta = {
 		"░█",
 		"█", // 1 char means that the empty cell is ""
 	],
-	/// functions
+	SEPARATOR: "----------------------------------------<br/>",
+	/// Core functions
 	ClearTimer(){
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
@@ -70,7 +73,7 @@ var _eta = {
 
 		let remaining = (_eta.objective - _eta.count);
 		_eta.ce = remaining*_eta.ca;
-		// eta, subtracts the elapsed time
+		// eta, subtracts the elapsed time (to account for the time passed)
 		_eta.e = (remaining*_eta.a)-_eta.cd;
 
 		_eta.Show();
@@ -83,6 +86,14 @@ var _eta = {
 		 // notice stop below the tick above
 		if(_eta.count >= _eta.objective)
 		 	_eta.Stop(); // stop when target reached
+	},
+	SetCount(val) {
+		// Sets count, off_count, and average. Duration needs to be set first
+		_eta.count = val;
+		_eta.off_count = _eta.count - _eta.offset;
+		_eta.a = _eta.duration/_eta.off_count;
+		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count); // notice it collides with load
+		// the rest of the values are set on Tick
 	},
 	Count(){
 		//start if never started
@@ -102,38 +113,34 @@ var _eta = {
 		let n = +(new Date());
 		_eta.ld = n - _eta.l;
 		_eta.l = n;
-		_eta.count += 1;
-		_eta.off_count = _eta.count - _eta.offset;
 		// _eta.duration += _eta.ld; might be less accurate
-		_eta.duration = (_eta.l - _eta.st);// might be more accurate
-		_eta.a = _eta.duration/_eta.off_count;
+		_eta.duration = (_eta.l - _eta.st); // might be more accurate
+		_eta.SetCount(_eta.count+1);
 
 		_eta.TryTick();
 
 		// on count set load's count value
-		document.getElementById(_eta.ELEMENTS.count).value = _eta.count;
+		_eta.SetDocValue(_eta.ELEMENTS.count,  _eta.count);
 		// and last ms
-		document.getElementById("last_ms").value = _eta.l;
+		_eta.SetDocValue("last_ms", _eta.l)
 		_eta.SaveToUrl(); // write url
 	},
 	Restart() {
 		// Reset using the document, but not the re/load part. Sets the rest to initial value.
 		// Also called by Load
 		_eta.Stop();
-		//_eta.count = 0;
 		_eta.e = 0;//eta
 		_eta.duration = 0;//sum
-		_eta.a = 0;//avg
 		_eta.ld = 0;//last_duration
 		_eta.sp = 0;//speed
 		_eta.cd = 0;//current duration (last dur)
 		_eta.ca = 0;//current avg
 		_eta.ce = 0;//current eta
-		_eta.count = _eta.offset = _eta.GetDocIntValue(_eta.ELEMENTS.offset);
-		_eta.off_count = _eta.count - _eta.offset;
+		_eta.offset = _eta.GetDocIntValue(_eta.ELEMENTS.offset);
+		_eta.SetCount(_eta.offset);
 		_eta.objective = _eta.GetDocIntValue(_eta.ELEMENTS.objective);
 		_eta.off_objective = _eta.objective - _eta.offset;
-		_eta.to = parseInt(document.getElementById("toms").value);
+		_eta.to = _eta.GetDocIntValue("toms");
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
 		_eta.st = _eta.l; //start ms
 
@@ -141,7 +148,7 @@ var _eta = {
 		_eta.SetCountBtnText("Count");
 		document.getElementById("b_reset").value = "Restart";
 		// beware conflicts with load
-		document.getElementById("start_ms").value = _eta.st;
+		document.getElementById(_eta.ELEMENTS.start).value = _eta.st;
 		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count); // notice it collides with load
 		// not saving to url here because it will mess with load, and reset
 
@@ -150,15 +157,15 @@ var _eta = {
 	},
 	Reset() {
 		// Reset using the document, but not the re/load part
+		// restart calls try tick with does show and show slow
 		_eta.Restart();
 		_eta.SaveToUrl();
-		_eta.ShowSlow();
 	},
 	Load() {
 		// Loads from document. LoadFromUrl calls this.
 
 		// cache sms and count because "restart" will override it with last (aka now)
-		let sms = parseInt(document.getElementById("start_ms").value);
+		let sms = _eta.GetDocIntValue(_eta.ELEMENTS.start) || 0;
 		let c = _eta.GetDocIntValue(_eta.ELEMENTS.count) || 0;
 
 		// Reinitialize
@@ -166,21 +173,19 @@ var _eta = {
 		// last is set to now. but we reload it below. It also starts the tick
 
 		// restore original startms
-		document.getElementById("start_ms").value = sms;
+		document.getElementById(_eta.ELEMENTS.start).value = sms;
 		_eta.st = sms;
-		// load count
-		_eta.count = c;
-		_eta.SetDocValue(_eta.ELEMENTS.count, c);
-		_eta.off_count = _eta.count - _eta.offset;
 
 		// try to load last ms if possible otherwise "Restart" above makes it default to now
 		let nl = parseInt(document.getElementById("last_ms").value);
 		if (!isNaN(nl) && nl > 0 && nl > _eta.st) {
 			_eta.l = nl;
 		}
-
 		_eta.duration = (_eta.l - _eta.st);
-		_eta.a = _eta.duration/_eta.count;
+
+		// load count
+		_eta.SetCount(c);
+
 		_eta.ld = _eta.a;
 
 		// update ui
@@ -188,6 +193,7 @@ var _eta = {
 		_eta.TryTick();
 		_eta.ShowSlow();
 	},
+	/// Utility function
 	MS2TD(v, simple){
 		v = Math.ceil(v);
 		let t = "";
@@ -288,6 +294,7 @@ var _eta = {
 		}
 		return b;
 	},
+	// UI functions
 	ShowSlow() {
 		let sa = _eta.Simplify(_eta.a);
 		let sl = _eta.Simplify(_eta.ld);
@@ -306,8 +313,8 @@ var _eta = {
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
 		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";
 		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
-		t += "----------------------------------------";
-		//t = t.replace(/	/g, "&#9;"); // works because in the html we have the <pre> tag
+		t += _eta.SEPARATOR;
+		// tabs works because in the html we have the <pre> tag
 		document.getElementById("text_slow").innerHTML = t;
 	},
 	Show() {
@@ -318,7 +325,7 @@ var _eta = {
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
 		t += "E.Dur.&#9;&#9;: "+_eta.MS2TD(_eta.e + _eta.duration) +"<br/>";
 		t += "E.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
-		t += "----------------------------------------<br/>";
+		t += _eta.SEPARATOR;
 		document.getElementById("text").innerHTML = t;
 	},
 	SetCountBtnText(t) {
@@ -334,6 +341,7 @@ var _eta = {
 	GetDocIntValue(el) {
 		return parseInt(document.getElementById(el).value, 10);
 	},
+	// Save load functions`
 	LoadFromUrl() {
 		let params = new URLSearchParams(document.location.search.substring(1));
 		let c = parseInt(params.get("c"), 10); // start count
@@ -352,7 +360,7 @@ var _eta = {
 		_eta.SetDocValue(_eta.ELEMENTS.offset, of);
 		document.getElementById("toms").value = toms;
 		_eta.SetDocValue(_eta.ELEMENTS.count, c);
-		document.getElementById("start_ms").value = sms;
+		_eta.SetDocValue(_eta.ELEMENTS.start, sms);
 		document.getElementById("last_ms").value = lms;
 		document.getElementById("titles").value = nt;
 		document.getElementById("bar").value = _eta.CleanBarStyle(bar);
