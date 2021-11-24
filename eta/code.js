@@ -333,7 +333,10 @@ var _eta = {
 	},
 	SetTitle(nt) {
 		document.getElementById("titles").value = nt;
-		document.title = "ETA.: " + nt;
+
+		let p = _eta.off_count/_eta.off_objective *100;
+		let title = "ETA: " + nt + " (" + p.toFixed(4) +")";
+		document.title =  title;
 	},
 	SetDocValue(el, val) {
 		document.getElementById(el).value = val;
@@ -379,8 +382,10 @@ var _eta = {
 		u.searchParams.set("to", _eta.to) // refresh
 		u.searchParams.set("b", document.getElementById("bar").value) // bar style
 
-		u.searchParams.set("tt", document.getElementById("titles").value) // title (last on purpose as it could get long)
-		window.history.replaceState({}, "E.T.A. " +_eta.MS2TD(_eta.e), u);
+    	let title = document.getElementById("titles").value;
+		u.searchParams.set("tt", title); // title (last position on purpose as it could get long)
+		window.history.replaceState({}, "E.T.A. " + _eta.count, u);
+		_eta.SetTitle(title);
 	}
 };
 
