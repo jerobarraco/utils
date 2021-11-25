@@ -335,7 +335,7 @@ var _eta = {
 		document.getElementById("titles").value = nt;
 
 		let p = _eta.off_count/_eta.off_objective *100;
-		let title = "ETA: " + nt + " (" + p.toFixed(4) +")";
+		let title = "ETA: " + nt + " " + p.toFixed(2) +"%";
 		document.title =  title;
 	},
 	SetDocValue(el, val) {
@@ -382,7 +382,7 @@ var _eta = {
 		u.searchParams.set("to", _eta.to) // refresh
 		u.searchParams.set("b", document.getElementById("bar").value) // bar style
 
-    	let title = document.getElementById("titles").value;
+		let title = document.getElementById("titles").value;
 		u.searchParams.set("tt", title); // title (last position on purpose as it could get long)
 		window.history.replaceState({}, "E.T.A. " + _eta.count, u);
 		_eta.SetTitle(title);
