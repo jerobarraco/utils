@@ -296,8 +296,6 @@ var _eta = {
 	},
 	// UI functions
 	ShowSlow() {
-		let sa = _eta.Simplify(_eta.a);
-		let sl = _eta.Simplify(_eta.ld);
 		let p = _eta.off_count/_eta.off_objective;
 
 		let t = "";
@@ -307,11 +305,14 @@ var _eta = {
 			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.offset + " +"+_eta.off_count +" = " +_eta.count +"<br/>" :
 			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.count + "<br/>"
 		;
-   		t += "Last Speed&#9;: "+sl+"<br/>";
-		t += "Avg. Speed&#9;: "+sa+"<br/>";
+		t += "Last Speed&#9;: "+_eta.Simplify(_eta.ld)+"<br/>";
+		t += "Avg. Speed&#9;: "+_eta.Simplify(_eta.a)+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
-		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";
+		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";ç
+		t += "Est. Dur.&#9;: "+_eta.MS2TD(_eta.duration + _eta.e + _eta.cd) +"<br/>";
+		// est dur accounts for elapsed time too, the result value will always be the same (should)
+		// _eta.cd usually will be 0 here, but is safer to include it
 		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
 		t += _eta.SEPARATOR;
 		// tabs works because in the html we have the <pre> tag
@@ -323,8 +324,8 @@ var _eta = {
 		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
 		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cd) +"<br/>";
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
-		t += "E.Dur.&#9;&#9;: "+_eta.MS2TD(_eta.e + _eta.duration) +"<br/>";
-		t += "E.CalcDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
+		t += "CalcEstDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
+		// t += "E.Dur.&#9;&#9;: "+_eta.MS2TD(_eta.e + _eta.duration + _eta.cd) +"<br/>";
 		t += _eta.SEPARATOR;
 		document.getElementById("text").innerHTML = t;
 	},
