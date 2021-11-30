@@ -31,6 +31,7 @@ var _eta = {
 		offset:"offset",
 		objective:"objective",
 		start:"start_ms",
+		title:"titles"
 	},
 	//// bars
 	BAR_LEN: 24,
@@ -144,7 +145,7 @@ var _eta = {
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
 		_eta.st = _eta.l; //start ms
 
-		_eta.SetTitle(document.getElementById("titles").value);
+		_eta.SetTitle(document.getElementById(_eta.ELEMENTS.title).value);
 		_eta.SetCountBtnText("Count");
 		document.getElementById("b_reset").value = "Restart";
 		// beware conflicts with load
@@ -309,7 +310,7 @@ var _eta = {
 		t += "Avg. Speed&#9;: "+_eta.Simplify(_eta.a)+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
-		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";ç
+		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";
 		t += "Est. Dur.&#9;: "+_eta.MS2TD(_eta.duration + _eta.e + _eta.cd) +"<br/>";
 		// est dur accounts for elapsed time too, the result value will always be the same (should)
 		// _eta.cd usually will be 0 here, but is safer to include it
@@ -333,7 +334,7 @@ var _eta = {
 		document.getElementById("b_count").value = t;
 	},
 	SetTitle(nt) {
-		document.getElementById("titles").value = nt;
+		_eta.SetDocValue(_eta.ELEMENTS.title, nt);
 
 		let p = _eta.off_count/_eta.off_objective *100;
 		let title = "ETA: " + nt + " " + p.toFixed(2) +"%";
@@ -366,7 +367,7 @@ var _eta = {
 		_eta.SetDocValue(_eta.ELEMENTS.count, c);
 		_eta.SetDocValue(_eta.ELEMENTS.start, sms);
 		document.getElementById("last_ms").value = lms;
-		document.getElementById("titles").value = nt;
+		_eta.SetDocValue(_eta.ELEMENTS.title, nt);
 		document.getElementById("bar").value = _eta.CleanBarStyle(bar);
 
 		// this function should limit itself to set values on the doc elements, load handles the rest
@@ -383,7 +384,7 @@ var _eta = {
 		u.searchParams.set("to", _eta.to) // refresh
 		u.searchParams.set("b", document.getElementById("bar").value) // bar style
 
-		let title = document.getElementById("titles").value;
+		let title = document.getElementById(_eta.ELEMENTS.title).value;
 		u.searchParams.set("tt", title); // title (last position on purpose as it could get long)
 		window.history.replaceState({}, "E.T.A. " + _eta.count, u);
 		_eta.SetTitle(title);
