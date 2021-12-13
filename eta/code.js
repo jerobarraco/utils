@@ -1,4 +1,4 @@
-// Copyright 2015-2021 Jerónimo Barraco Mármol GPL v3
+// Copyright 2015-2022 Jerónimo Barraco Mármol GPL v3
 
 function pad(n, d) {
 	return ('0000'+ n).slice(-d); // https://stackoverflow.com/q/10073699/260242
@@ -16,7 +16,7 @@ var _eta = {
 	l: 0,//last ms
 	ld: 0,//last dur
 	a: 0,//avg
-	e: 0,//eta
+	e: 0,//eta // TODO should be "remaining"
 	sp: 0,//speed
 	cd: 0,//current duration
 	ca: 0,//current avg
@@ -297,7 +297,11 @@ var _eta = {
 	},
 	// UI functions
 	ShowSlow() {
+		// this vars are not reused, so not stored. store them otherwise.
 		let p = _eta.off_count/_eta.off_objective;
+		// est_dur accounts for elapsed time too, the result value will (should) always be the same (until new count)
+		// _eta.cd _usually_ will be 0 here, but is safer to include it
+		let est_dur = _eta.duration+ _eta.e + _eta.cd;
 
 		let t = "";
 		t += _eta.GetProgressBar(p) + "<br/>";
@@ -306,14 +310,13 @@ var _eta = {
 			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.offset + " +"+_eta.off_count +" = " +_eta.count +"<br/>" :
 			"Progress&#9;: "+ _eta.objective + " -"+(_eta.objective-_eta.count) + " = " + _eta.count + "<br/>"
 		;
+  		t += "Est.T.Arrival&#9;: " + new Date(_eta.st + est_dur).toLocaleString() + "<br/>" ;
 		t += "Last Speed&#9;: "+_eta.Simplify(_eta.ld)+"<br/>";
 		t += "Avg. Speed&#9;: "+_eta.Simplify(_eta.a)+"<br/>";
 		t += "Last Dur.&#9;: "+_eta.MS2TD(_eta.ld) +"<br/>";
 		t += "Avg. Dur.&#9;: "+_eta.MS2TD(_eta.a) +"<br/>";
 		t += "Acum.Dur.&#9;: "+_eta.MS2TD(_eta.duration) +"<br/>";
-		t += "Est. Dur.&#9;: "+_eta.MS2TD(_eta.duration + _eta.e + _eta.cd) +"<br/>";
-		// est dur accounts for elapsed time too, the result value will always be the same (should)
-		// _eta.cd usually will be 0 here, but is safer to include it
+		t += "Est. Dur.&#9;: "+_eta.MS2TD(est_dur) +"<br/>";
 		// t += "Start Time	: (" + _eta.st + ")<br/>"+_eta.MS2TD(_eta.st) + "<br/>";
 		t += _eta.SEPARATOR;
 		// tabs works because in the html we have the <pre> tag
@@ -321,8 +324,8 @@ var _eta = {
 	},
 	Show() {
 		let t = "";
-		t += "ETA&#9;&#9;: "+_eta.MS2TD(_eta.e) +"<br/>";
-		t += "CalcE.T.A.&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
+		t += "Remaining&#9;: "+_eta.MS2TD(_eta.e) +"<br/>";
+		t += "CalcRemaining&#9;: "+_eta.MS2TD(_eta.ce) +"<br/>";
 		t += "CalcEstDur.&#9;: "+_eta.MS2TD(_eta.ce + _eta.duration) +"<br/>";
 		t += "CalcLastDur.&#9;: "+_eta.MS2TD(_eta.cd) +"<br/>";
 		t += "CalcAvgDur.&#9;: "+_eta.MS2TD(_eta.ca) +"<br/>";
