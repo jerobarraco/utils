@@ -41,8 +41,15 @@ def fixAndroidLink(args, CONF={}):
 
 def fixUE(args):
 	pass
+
+def shouldRunLocal(args):
+	# fix for unreal asking clang for some stuff in private
+	# todo move to samples and leave this without one
+	if args[-1] == "-": return True
+	return False
+
 #Exports
-RUN_LOCAL = None
+RUN_LOCAL = shouldRunLocal # None
 #functions that tell if need to use env
 USE_ENV = None
 # functions that tell if need to use shell

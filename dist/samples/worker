@@ -19,7 +19,8 @@ mount_smbfs //worker@mymachine/myuser/Library/Developer/Xcode/ /Users/myuser/Lib
 # this one is used for appcode
 mount_smbfs //worker@mymachine/myuser/Library/Caches/JetBrains/AppCode2021.2/ ./Library/Caches/JetBrains/AppCode2021.2/
 
-# sshfs using fuse is not working properly atm, it might trigger too many failed attempts, needs more testing
+# sshfs works perfectly on linux.
+# sshfs using fuse on mac with jumpcloud had issues , it might trigger too many failed attempts, needs more testing
 #sshfs myuser@mymachine:work ./work
 #sshfs myuser@mymachine:Library/Developer/Xcode ./Library/Developer/Xcode
 # end of remote worker lines
