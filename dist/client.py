@@ -8,6 +8,8 @@ __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
 __version__ = "1.0"
 
+# Yeah the config is embedded. i don´t wanna have to parse an extra file everytime this client is run. after all it's meant
+# to run stuff that are already too heavy for one machine.
 CONF = {
 	"debug": True,
 	"timeout": 180,
@@ -40,7 +42,7 @@ CONF = {
 	]
 }
 
-# ------------------ Here be dragons
+# ------------------ Here be dragons (that means don't touch, unless you're contributing the changes that is)
 import os
 import rpyc
 import subprocess
@@ -241,7 +243,7 @@ def run(args, cwd=None):
 	run_local = shouldRunLocally(args) or (custom.RUN_LOCAL and custom.RUN_LOCAL(args))
 	use_shell = shouldUseShell(args) or (custom.USE_SHELL and custom.USE_SHELL(args))
 	use_comm = shouldUseComm(args) or (custom.USE_COMM and custom.USE_COMM(args))
-	use_env = shouldUseEnv(args) or  (custom.USE_ENV and custom.USE_ENV(args))
+	use_env = shouldUseEnv(args) or (custom.USE_ENV and custom.USE_ENV(args))
 	env = None if not use_env else os.environ.copy()
 	#if DEBUG:
 	#    open(os.path.join(WORK_PATH, 'clog'), 'a').write(
