@@ -1,0 +1,2 @@
+#!/bin/bash
+pv -d $1 -t -r -a -b -T

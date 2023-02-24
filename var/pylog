@@ -1,0 +1,120 @@
+#!/bin/python3
+import time
+import sys, subprocess
+
+# author: jeronimo barraco marmol
+
+HELP = """
+run something like
+cd MyUnrealDir
+make | tee mlog & 
+pylog ./mlog
+"""
+
+def follow(thefile):
+	#thefile.seek(0, 2) # Go to the end of the file
+	sleep_max = 0.7
+	sleep_min = 0.05
+	sleep_inc = 0.01
+	sleep = sleep_min
+    
+	while True:
+		line = thefile.readline()
+		if not line:
+			time.sleep(sleep) # Sleep briefly
+			sleep = min(sleep_max, sleep + sleep_inc)
+			continue
+		
+		sleep = sleep_min
+		yield line
+
+def parse(line):
+	pos = (0,0)
+	#if line.endswith("%"):
+		
+	start = line.find("[") +1
+	if start < 1 : return pos
+
+	mid = line.find("/", start) + 1
+	if mid < 1 : return pos
+
+	end = line.find("]", mid)
+	if end < 0 : return pos
+
+	return (int(line[start:mid-1]), int(line[mid:end]))
+
+def parseCmd(line):
+	if line.startswith("Running command"):
+		return line.split()
+	if line.startswith("Building") or line.startswith("Parsing"):
+		return [line,]
+	return None
+
+def parseOtherSteps(line):
+	if line.startswith("Total") or line.startswith("Waiting for"):
+		return line
+	return None
+
+def parseTotalTime(line):
+	if line.startswith("Total"):
+		return line
+	return None
+
+KPID = []
+def diagCmd(*args):
+	global KPID
+	pars = ["qdbus", KPID[0], KPID[1]]
+	pars.extend(args)
+	#print(pars)
+	subprocess.Popen(pars)
+
+def main(fname):
+	global KPID
+	proc = subprocess.Popen(["kdialog", "--progressbar", "Starting up...", "--title", "Unreal build watcher"], stdout=subprocess.PIPE)
+	
+	kline = proc.stdout.readline()[:-1]# readline, remove \n
+	KPID = kline.split() #split the space,
+	
+	cmd = ""
+	step = ''
+	for l in follow(open(fname, "r")):
+		updateText = False
+		
+		parsedCmd = parseCmd(l)
+		if parsedCmd:
+			cmd = ' '.join(parsedCmd[-3:])
+			step = '...'
+			diagCmd("Set", "",  "maximum", "0")
+			diagCmd("Set", "", "value", "0")
+			updateText = True
+
+		parsed = parseOtherSteps(l)
+		if parsed:
+			step = parsed
+			updateText = True
+
+		#TODO add a ETA class to calculate simple eta
+		parsed = parse(l)
+		if parsed[1] > 0:
+			diagCmd("Set", "",  "maximum", str(parsed[1]))
+			diagCmd("Set", "",  "value", str(parsed[0]))
+			step = l
+			updateText = True
+		
+		if updateText:
+			text = "{0}\n{1}".format(cmd, step)
+			diagCmd("setLabelText", text)
+
+
+if __name__== "__main__":
+	if len(sys.argv) < 2 :
+		print (HELP)
+		exit(0)
+	
+	try:
+		main(sys.argv[1])
+	except:
+		if KPID and KPID[0]:
+			pass #TODO what should go here?
+
+

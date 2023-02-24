@@ -1,0 +1,10 @@
+#!/bin/bash
+echo "usage: pvlog logfile target start"
+diff=$(($2-$3))
+echo Target: $2		Start: $3	Diff: $diff	Log: "$1"
+
+#pb=$(kdialog --progressbar "YOUR TEXT HERE");
+#qdbus $pb Set "" maximum $diff > /dev/null;
+#inc=$((`qdbus $pb Get "" "value"` + 1)); qdbus $pb Set "" "value" $inc; 
+#tail -n0 -f "$1" | pv -s$diff -Wlpret | inc=$((`qdbus $pb Get "" "value"` + 1)) | qdbus $pb Set "" "value" $inc  > /dev/null
+tail -n0 -f "$1" | pv -s$diff -Wlpret > /dev/null
