@@ -1,0 +1,27 @@
+#!/bin/bash
+# change these:
+xpath="/home/nande/work/UE5.2/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64/v21_clang-15.0.1-centos7/x86_64-unknown-linux-gnu/bin/"
+bpath="/home/nande/work/UE5.2/Engine/Saved/UnrealBuildTool"
+dpath="/home/nande/work/repos/utils/dist/ue"
+
+# copy the Buildconfiguration for distribution
+cp "$dpath/BuildConfiguration_normal.xml" "$bpath/BuildConfiguration.xml"
+
+pushd $xpath || exit
+
+if test -f "clang_"; then
+  rm ./clang
+  rm ./clang++
+else
+  # if it's vanilla move it anyway.
+  mv clang clang_
+  mv clang++ clang++_
+fi
+
+# leave it a link, is safer than moving it around
+ln -s ./clang_ ./clang
+ln -s ./clang++_ ./clang++
+
+popd
+
+echo "ue distributed disabled"

@@ -1,0 +1,38 @@
+#!/bin/bash
+# don't make this number much bigger than the actual number of possible concurrent tasks on workers, otherwise you might risk a timeout
+# but do maybe make it 1 bigger to account for overhead starting tasks
+numTasks=29
+# path where your client script is stored
+dpath="/home/nande/work/repos/utils/dist/ue"
+
+# probably need to change this
+xpath="/home/nande/work/UE5.2/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64/v21_clang-15.0.1-centos7/x86_64-unknown-linux-gnu/bin/"
+
+# and this
+bpath="/home/nande/work/UE5.2/Engine/Saved/UnrealBuildTool/"
+
+pushd $xpath || exit
+
+if test -f "clang_"; then
+  rm ./clang  # delete the link, we will redo it, this is on purpose a feature.
+  rm ./clang++
+else
+  # reorganize the originals
+  mv clang clang_
+  cp clang++ clang++_
+  mv clang++ clang++o
+
+  # clang and clang++ are actually the same binary. they just change names. (which is great for us, a weird practice,
+  # and also has 1 minor issue when linking but only on mac and maybe for android)
+fi
+
+ln -s "$dpath/client.py" ./clang
+ln -s "$dpath/client.py" clang++
+
+# defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks $numTasks
+# copy the build config for distributed building
+cp "$dpath/BuildConfiguration_dist.xml" "$bpath/BuildConfiguration.xml"
+popd
+
+echo "ue distributed enabled"
+

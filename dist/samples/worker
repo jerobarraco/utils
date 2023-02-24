@@ -13,6 +13,8 @@ mkdir -p ./work
 mkdir -p ./Library/Developer/Xcode
 mkdir -p ./Library/Caches/JetBrains/AppCode2021.2/
 
+# requires cifs-utils package on ubuntu and uses something like https://www.configserverfirewall.com/ubuntu-linux/mount-samba-share-ubuntu-cifs/
+# it's quite annoying to configue sshfs on linux seems to work fine
 mount_smbfs //worker@mymachine/worker/work/ /Users/myuser/work/
 # this one is used for ios build
 mount_smbfs //worker@mymachine/myuser/Library/Developer/Xcode/ /Users/myuser/Library/Developer/Xcode/

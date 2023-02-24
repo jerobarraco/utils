@@ -25,6 +25,18 @@ move your program to have an extra "_"
 
     move 'clang' to 'clang_'
 
+this client program will add a _ when it needs to call the original software.
+You should also set it in the worker.js config. So that a worker doesnt end calling the client in a loop.
+this is done this way to give you flexibility, since some software you want to modify one but not another soft.
+notice this is a configuration per worker. so if you haven't modified the worker local environ, you might skip this
+gaining a little bit of performance. though i recommend that you set everything the same.
+under remapFiles for example:
+    "remapFiles": {
+		"/clang": "/clang_"
+	}
+
+
+
 now make a link to client.py in the place of clang
 
     ln -s ../../dist/client.py clang
@@ -47,9 +59,10 @@ now make a link to client.py in the place of clang
     * optional: forward the worker port through ssh
       * see samples/connect-w1. You'd need one of this script per worker (since each has it's own port number)
       * notice the port changes. since they are all forwarded to localhost. the client only connects to localhost.
-* export the samba mount
+* if not using sshfs (recommended) export the samba mount (see notes on sample/worker)
 * run each worker _on each remote machine_ 
-  * connect through ssh (recommended, also recommended to use tmux). or run directly on the machines if you have access to the hardware (not recommended)
+  * connect through ssh (recommended, also recommended to use tmux).
+  * or run directly on the machines if you have access to the hardware (not recommended)
 
 * note that you can modify client.py to use remote ips. and you can open the ports on the worker's machine.
 but then all your communication will go in plain :] you won't want to do that.

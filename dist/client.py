@@ -8,14 +8,20 @@ __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
 __version__ = "1.0"
 
-# Yeah the config is embedded. i don´t wanna have to parse an extra file everytime this client is run. after all it's meant
+# Yeah the config is embedded. i don´t want to have to parse an extra file everytime this client is run. after all it's meant
 # to run stuff that are already too heavy for one machine.
+# if you need different config copy the client+custom+utils+worker files elsewhere. it's very small.
 CONF = {
 	"debug": True,
 	"timeout": 180,
 	"cooldown": 2,
 	"sleep": 0,
 	"workers": [
+		# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
+		# which has security implications
+		"localhost:7711",
+		"localhost:7722",
+	],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
 		"localhost:7715",
 		"localhost:7717",
 		"localhost:7722",
@@ -33,7 +39,7 @@ CONF = {
 	# " List of commands to run using the current environment, * means all"
 	"useEnv": [
 	],
-	# " List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
+	# List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
 	"useShell": [
 	],
 	# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof" client might never finish.

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+ https://forums.unrealengine.com/t/limit-set-the-number-of-parallel-jobs-when-compiling/305777 thank you forum members
+ see variables in : Engine/Source/Programs/UnrealBuildTool/Executors/ParallelExecutor.cs
+ https://docs.unrealengine.com/5.1/en-US/build-configuration-for-unreal-engine/
+ replace in /home/nande/.config/Unreal Engine/UnrealBuildTool/
+ and /home/nande/work/UE5.2/Engine/Saved/UnrealBuildTool/
+-->
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+    <BuildConfiguration>
+        <!--<MaxParallelActions>6</MaxParallelActions>-->
+		<MaxParallelActions>16</MaxParallelActions>
+		<bAllCores>true</bAllCores>
+	</BuildConfiguration>
+
+    <ParallelExecutor>
+        <!--<MaxProcessorCount>1</MaxProcessorCount>
+        <MemoryPerActionBytes>200.0</MemoryPerActionBytes>
+
+        <ProcessorCountMultiplier>2</ProcessorCountMultiplier> -->
+        <bStopCompilationAfterErrors>false</bStopCompilationAfterErrors>
+        <bShowCompilationTimes>true</bShowCompilationTimes>
+        <bShowPerActionCompilationTimes>true</bShowPerActionCompilationTimes>
+        <ProcessPriority>Normal</ProcessPriority>
+    </ParallelExecutor>
+</Configuration>
