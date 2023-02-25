@@ -25,7 +25,7 @@ import utils
 # Globals
 CONF = {}
 remapDirs = {}
-remapFiles = {}
+remapCmds = {}
 numTasks = 1
 LOCK = None
 DEBUG = True
@@ -156,7 +156,7 @@ class WorkerService(rpyc.Service):
 				pass
 
 		# a bit deprecated, to be able to run things locally.
-		for k, v in remapFiles.items():
+		for k, v in remapCmds.items():
 			c = cmd[0]
 			if c.endswith(k):
 				cmd[0] = v.join(c.rsplit(k, 1)) # replace only last occurrence
@@ -268,11 +268,11 @@ class WorkerService(rpyc.Service):
 		return True
 
 def loadConf(fname):
-	global CONF, remapDirs, remapFiles, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
+	global CONF, remapDirs, remapCmds, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
 
 	CONF = json.load(open(fname, 'r'))
 	remapDirs = CONF.get('remapDirs', {})
-	remapFiles = CONF.get("remapFiles", {})
+	remapCmds = CONF.get("remapCmds", {})
 	numTasks = CONF.get("numTasks", 1)
 	LOCK = threading.Semaphore(int(numTasks))
 	DEBUG = CONF.get('debug', False)

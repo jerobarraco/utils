@@ -1,2 +1,4 @@
 #!/bin/bash
+# can add -C on a remote connection
+# connects to the worker machine, and forwards a port to the localhost. so that client can connect to localhost:7711
 ssh -L 7711:localhost:7711 worker-machine

@@ -7,8 +7,6 @@
 	"colors": true,
 	"colorsBg": false,
 	"icons": ["▶", "✓", "✘", "!", "="],
-	"remapFiles": {
-		"/clang": "/clang_"
-	}
+	"remapCmds": { }
+	"remapDirs": {}
 }
-

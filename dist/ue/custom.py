@@ -42,20 +42,28 @@ def fixAndroidLink(args, CONF={}):
 def fixUE(args):
 	pass
 
-def shouldRunLocal(args):
+def shouldRunDirect(args):
 	# fix for unreal asking clang for some stuff in private
-	# todo move to samples and leave this without one
 	last = args[-1]
 
 	# - is required (since reading/writing to stdin is hard)
 	# --version is nice for speed
 	# -lgcc is when it does linking. this is a nice to have also, just because linking reads a lot of disk and is relatively fast on local
-	if last in ("-", "--version", "-lgcc"): return True
-	if "PCH." in last: return True #notice sintax here means something different
+	if last == "-": return True
 	return False
 
+def clientsToUse(args):
+	last = args[-1]
+
+	# local worker is in position 1, this is not ideal. it should be 0, but since im testing this i put it in 1
+	if last in( "--version", "-lgcc")  or "PCH." in last:
+		return (1, )
+	return None
+
 #Exports
-RUN_LOCAL = shouldRunLocal # None
+RUN_DIRECT = shouldRunDirect # None
+#function that return a list of possible clients to run a command. or empty if all. receives args
+CLIENTS = clientsToUse # None
 #functions that tell if need to use env
 USE_ENV = None
 # functions that tell if need to use shell

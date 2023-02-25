@@ -23,6 +23,11 @@ mount_smbfs //worker@mymachine/myuser/Library/Caches/JetBrains/AppCode2021.2/ ./
 
 # sshfs works perfectly on linux.
 # sshfs using fuse on mac with jumpcloud had issues , it might trigger too many failed attempts, needs more testing
+# if not using on a local network you can try using the compress option (-C)
+# other options are:
+#   sshfs -o max_write=1024 -o cache=no -o direct_io -o idmap=user -o sshfs_sync -o dir_cache=no -o compression=no user@machine:/home/nande/work /home/nande/work
+# https://www.man7.org/linux/man-pages/man1/sshfs.1.html
+# https://linux.die.net/man/1/sshfs
 #sshfs myuser@mymachine:work ./work
 #sshfs myuser@mymachine:Library/Developer/Xcode ./Library/Developer/Xcode
 # end of remote worker lines

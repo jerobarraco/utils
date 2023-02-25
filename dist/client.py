@@ -30,7 +30,7 @@ CONF = {
 		"localhost:7705",
 		"localhost:7723",
 	],
-	# List of commands to run locally, * means all
+	# List of commands to run locally, * means all. This skips load balancing. careful.
 	"runLocally": [
 	],
 	# " List of commands to run using the current environment, * means all"
@@ -41,7 +41,7 @@ CONF = {
 	],
 	# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof" client might never finish.
 	"useComm": [
-		# for example 'grep' (which doesnt work atm)
+		# for example 'grep' (which doesn't work atm)
 	]
 }
 
@@ -212,8 +212,17 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	return False, retc
 
 def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
-	global WORKERS
-	for w in WORKERS:
+	global WORKERS, CONF
+
+	# select the workers to use
+	cur_workers = WORKERS
+	if custom.CLIENTS:
+		worker_is = custom.CLIENTS(args)
+		if worker_is:
+			cur_workers = [WORKERS[i] for i in worker_is]
+
+	# iterate the workers. and try to get 1 to run the command
+	for w in cur_workers:
 		c = getConnection(w)
 		if not c: continue
 
@@ -243,7 +252,7 @@ def run(args, cwd=None):
 	for fix in custom.FIXES:
 		fix(args, CONF)
 
-	run_local = shouldRunLocally(args) or (custom.RUN_LOCAL and custom.RUN_LOCAL(args))
+	run_local = shouldRunLocally(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
 	use_shell = shouldUseShell(args) or (custom.USE_SHELL and custom.USE_SHELL(args))
 	use_comm = shouldUseComm(args) or (custom.USE_COMM and custom.USE_COMM(args))
 	use_env = shouldUseEnv(args) or (custom.USE_ENV and custom.USE_ENV(args))

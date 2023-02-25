@@ -68,3 +68,15 @@ now make a link to client.py in the place of clang
 but then all your communication will go in plain :] you won't want to do that.
 the worker has no concept of user or authentication, that's a design feature that took me several years to learn, so it wont change.
 if you need any security use ssh . < that is a period.
+
+
+
+# Supported platforms
+Linux, Mac, windows partially
+
+# Windows
+shadowing a command is tricky and i haven´t done it properly yet, but might be doable.
+I don't use windows, so feel free to donate to me to do this.
+but running commands remotely is fine by using 
+    
+    python3 client.py command arg1 arg2 arg3

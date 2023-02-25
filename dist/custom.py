@@ -42,19 +42,29 @@ def fixAndroidLink(args, CONF={}):
 def fixUE(args):
 	pass
 
-def shouldRunLocal(args):
+def shouldRunDirect(args):
 	# fix for unreal asking clang for some stuff in private
-	# todo move to samples and leave this without one
 	if args[-1] == "-": return True
 	return False
 
+def clientsToUse(args):
+	# run pchs only on local instance, but through the worker, hence using load balancing
+	# the local worker is index 0
+	if "PCH." in args[-1]: return (0, )
+	return None
+
 #Exports
-RUN_LOCAL = shouldRunLocal # None
-#functions that tell if need to use env
+# all these are functions that receive args as params, and must return true/false. (except run_client)
+# function that tell if it needs to run directly, and locally. skipping the use of workers.
+# only use if the command fails when using a worker. it will skip load balancing. Use CLIENTS otherwise to filter allowed clients.
+RUN_DIRECT = None # shouldRunDirect
+#function that return a list of possible clients to run on, a list of INDEXES. or emtpy for all. eg (1,). receives args
+CLIENTS = None
+#function that tell if need to use env
 USE_ENV = None
-# functions that tell if need to use shell
+# function that tell if need to use shell
 USE_SHELL = None
-# functions that tell if need to use comm pipes
+# function that tell if need to use comm pipes
 USE_COMM = None
 # functions that applies fixes
 FIXES = () #(fixAndroidLink,)
