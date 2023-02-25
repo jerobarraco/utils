@@ -19,8 +19,8 @@ CONF = {
 	"workers": [
 		# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
 		# which has security implications
-		"localhost:7711",
 		"localhost:7722",
+		"localhost:7711",
 	],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
 		"localhost:7715",
 		"localhost:7717",
@@ -30,8 +30,8 @@ CONF = {
 		"localhost:7705",
 		"localhost:7723",
 	],
-	# List of commands to run locally, * means all. This skips load balancing. careful.
-	"runLocally": [
+	# List of commands to run directly, * means all. This skips workers, and as such, load balancing. careful.
+	"runDirectly": [
 	],
 	# " List of commands to run using the current environment, * means all"
 	"useEnv": [
@@ -79,12 +79,12 @@ def cmdInList(arg, cmd_list):
 		if arg.endswith(cmd): return True
 	return False
 
-def shouldRunLocally(args):
+def shouldRunDirectly(args):
 	global CONF, WORKERS
 	if not WORKERS: return True
-	if cmdInList(args[0], CONF.get('runLocally', [])): return True
+	if cmdInList(args[0], CONF.get('runDirectly', [])): return True
 
-	# run local files locally
+	# run local files directly (mac)
 	for a in args:
 		if a.startswith('@/private') or a.startswith('/private'): return True
 
@@ -252,7 +252,7 @@ def run(args, cwd=None):
 	for fix in custom.FIXES:
 		fix(args, CONF)
 
-	run_local = shouldRunLocally(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
+	run_local = shouldRunDirectly(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
 	use_shell = shouldUseShell(args) or (custom.USE_SHELL and custom.USE_SHELL(args))
 	use_comm = shouldUseComm(args) or (custom.USE_COMM and custom.USE_COMM(args))
 	use_env = shouldUseEnv(args) or (custom.USE_ENV and custom.USE_ENV(args))

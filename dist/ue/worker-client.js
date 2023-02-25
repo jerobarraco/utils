@@ -7,7 +7,6 @@
 	"colors": true,
 	"colorsBg": false,
 	"icons": ["▶", "✓", "✘", "!", "="],
-	"remapCmd": {},
+	"remapCmds": {},
 	"remapDirs": {}
 }
-
