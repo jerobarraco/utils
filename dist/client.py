@@ -233,8 +233,9 @@ def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
 
 	return False, -1 # could not execute
 
-def runLocal(args, cwd=None, env=None, shell=False):
+def runDirect(args, cwd=None, env=None, shell=False, comm=False):
 	try:
+		# TODO add comm
 		ret = subprocess.run(
 			args, cwd=cwd, check=True, env=env, shell=shell
 		)
@@ -252,18 +253,18 @@ def run(args, cwd=None):
 	for fix in custom.FIXES:
 		fix(args, CONF)
 
-	run_local = shouldRunDirectly(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
+	run_direct = shouldRunDirectly(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
 	use_shell = shouldUseShell(args) or (custom.USE_SHELL and custom.USE_SHELL(args))
 	use_comm = shouldUseComm(args) or (custom.USE_COMM and custom.USE_COMM(args))
 	use_env = shouldUseEnv(args) or (custom.USE_ENV and custom.USE_ENV(args))
 	env = None if not use_env else os.environ.copy()
 	#if DEBUG:
 	#    open(os.path.join(WORK_PATH, 'clog'), 'a').write(
-	#        "fname%s\ncommand %s\ncwd %s\nenv %s\nlocal %s\nshell %s\n" % (FNAME, args, cwd, env, run_local, use_shell)
+	#        "fname%s\ncommand %s\ncwd %s\nenv %s\nlocal %s\nshell %s\n" % (FNAME, args, cwd, env, run_direct, use_shell)
 	#    )
 
-	if run_local:
-		return runLocal(args, cwd, env, use_shell)
+	if run_direct:
+		return runDirect(args, cwd, env, use_shell, use_comm)
 
 	while True:
 		executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
