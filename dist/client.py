@@ -6,44 +6,7 @@
 __author__ = "Jeronimo Barraco-Marmol"
 __copyright__ = "Copyright (C) 2021 Jeronimo Barraco-Marmol"
 __license__ = "LGPL V3"
-__version__ = "1.0"
-
-# Yeah the config is embedded. i don´t want to have to parse an extra file everytime this client is run. after all it's meant
-# to run stuff that are already too heavy for one machine.
-# if you need different config copy the client+custom+utils+worker files elsewhere. it's very small.
-CONF = {
-	"debug": True,
-	"timeout": 180,
-	"cooldown": 2,
-	"sleep": 0,
-	"workers": [
-		# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
-		# which has security implications
-		"localhost:7722",
-		"localhost:7711",
-	],"dontUse":[ # this is just here just to quickly disable or enable workers by moving this line up&down
-		"localhost:7715",
-		"localhost:7717",
-		"localhost:7712",
-		"localhost:7718",
-		"localhost:7703",
-		"localhost:7705",
-		"localhost:7723",
-	],
-	# List of commands to run directly, * means all. This skips workers, and as such, load balancing. careful.
-	"runDirectly": [
-	],
-	# " List of commands to run using the current environment, * means all"
-	"useEnv": [
-	],
-	# List of commands to run using shell, * means all. shell might create side effects. and a slight security issue if ran outside ssh
-	"useShell": [
-	],
-	# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof" client might never finish.
-	"useComm": [
-		# for example 'grep' (which doesn't work atm)
-	]
-}
+__version__ = "1.01"
 
 # ------------------ Here be dragons (that means don't touch, unless you're contributing the changes that is)
 import os
@@ -55,21 +18,18 @@ import traceback
 
 # locals
 import utils
-import custom
+import config
 
 REAL_PATH = os.path.realpath(__file__)
 FNAME = os.path.basename(REAL_PATH)
 WORK_PATH = os.path.dirname(REAL_PATH)
-WORKERS = CONF.get('workers', [])
 # don't go lower than 2, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
 # will bloat on the server
-COOLDOWN = max(CONF.get('cooldown', 2), 2)
-DEBUG = CONF.get('debug', False)
-TIMEOUT = int(CONF.get('timeout', 0))
-CONCONF = {
-	"sync_request_timeout": None if TIMEOUT < 1 else TIMEOUT
+config.COOLDOWN = max(config.COOLDOWN, 2)
+# has this format because this is for rpyc
+CON_CONF = {
+	"sync_request_timeout": None if config.TIMEOUT < 1 else config.TIMEOUT
 }
-SLEEP = CONF.get('sleep', 0)
 
 def cmdInList(arg, cmd_list):
 	if not cmd_list: return False
@@ -80,29 +40,25 @@ def cmdInList(arg, cmd_list):
 	return False
 
 def shouldRunDirectly(args):
-	global CONF, WORKERS
-	if not WORKERS: return True
-	if cmdInList(args[0], CONF.get('runDirectly', [])): return True
+	if not config.WORKERS: return True
+	if cmdInList(args[0], config.RUN_DIRECTLY): return True
 
 	# run local files directly (mac)
-	for a in args:
+	for a in args[1:]:
 		if a.startswith('@/private') or a.startswith('/private'): return True
 
 	return False
 
 def shouldUseShell(args):
-	global CONF
-	for a in args:
+	for a in args[1:]:
 		if a in ('&&', ';', '||'): return True
-	return cmdInList(args[0], CONF.get('useShell', []))
+	return cmdInList(args[0], config.USE_SHELL)
 
 def shouldUseEnv(args):
-	global CONF
-	return cmdInList(args[0], CONF.get('useEnv', []))
+	return cmdInList(args[0], config.USE_ENV)
 
 def shouldUseComm(args):
-	global CONF
-	return cmdInList(args[0], CONF.get('useComm', []))
+	return cmdInList(args[0], config.USE_COMM)
 
 def fixSelf(args):
 	"""
@@ -128,13 +84,13 @@ conns = {}
 curTime = 0
 exitTries = 0
 def getConnection(address):
-	global conns, CONCONF
+	global conns, CON_CONF
 	c = None
 	try:
 		c = conns.get(address, None)
-		if not c: # create a new connection if it doesn't exists
+		if not c: # create a new connection if it doesn't exist
 			host, port = address.rsplit(':', 1)
-			c = rpyc.connect(host, int(port), config=CONCONF)
+			c = rpyc.connect(host, int(port), config=CON_CONF)
 			conns[address] = c
 		# Test the connection AND the worker. rpyc raises an exception when trying to execute, not when connecting (at least sometimes).
 		# Note it does this everytime. Just because it was working before doesn't means it still does.
@@ -142,7 +98,7 @@ def getConnection(address):
 	except ConnectionRefusedError as e:
 		return None  # try next worker
 	except Exception as e:
-		if DEBUG:
+		if config.DEBUG:
 			print("Connection to worker failed:")
 			print(traceback.format_exc())
 		return None  # try next worker
@@ -171,13 +127,14 @@ def doWork(c):
 	while True: # less fancy than iter, probably more fasterest
 		res = c.root.comm()
 		if res is None: break
+
 		out, err = res
 		if out: sys.stdout.write(out.decode('utf-8'))
 		if err: sys.stderr.write(err.decode('utf-8'))
 
 def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	global exitTries
-	retc = -1
+	wretc = -1
 	try:
 		executed = c.root.tryRun(args, cwd, env, shell)
 		if not executed: return False, -1
@@ -185,41 +142,39 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 		if comm: doCommWork(c)
 		else: doWork(c)
 
-		retc = c.root.getExitCode()
-		return True, retc
+		wretc = c.root.getExitCode()
+		return True, wretc
 	except KeyboardInterrupt as e:
 		# Xcode loooves to send this :(
 		rets = traceback.format_exc()
-		if DEBUG: print(rets)
+		if config.DEBUG: print(rets)
 
 		exitTries += 1
 		if exitTries > 5:
 			raise e
 	except rpyc.AsyncResultTimeout as e:
 		rets = traceback.format_exc()
-		if DEBUG: print(rets)
+		if config.DEBUG: print(rets)
 		raise e
 	except EOFError as e:
 		rets = traceback.format_exc()
-		if DEBUG: print(rets)
+		if config.DEBUG: print(rets)
 		raise e
 	except Exception as e:
 		rets = traceback.format_exc()
-		if DEBUG: print(rets)
+		if config.DEBUG: print(rets)
 		# hotfix, why?, xcode keeps sending random interrupts. it will still timeout on too many retries anyway (should this be a raise)
 		# return FAILURE
-		retc = 8
-	return False, retc
+		wretc = 8
+	return False, wretc
 
 def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
-	global WORKERS, CONF
 
-	# select the workers to use
-	cur_workers = WORKERS
-	if custom.CLIENTS:
-		worker_is = custom.CLIENTS(args)
-		if worker_is:
-			cur_workers = [WORKERS[i] for i in worker_is]
+	# select the workers to use based on the config
+	cur_workers = config.WORKERS
+	worker_is = config.clientsToUse(args)
+	if worker_is:
+		cur_workers = [config.WORKERS[i] for i in worker_is]
 
 	# iterate the workers. and try to get 1 to run the command
 	for w in cur_workers:
@@ -227,15 +182,18 @@ def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
 		if not c: continue
 
 		# got a client, do stuff
-		executed, retc = tryRunInAWorker(c, args, cwd, env, shell, comm)
+		executed, wretc = tryRunInAWorker(c, args, cwd, env, shell, comm)
 		if executed:
-			return True, retc
+			return True, wretc
 
 	return False, -1 # could not execute
 
-def runDirect(args, cwd=None, env=None, shell=False, comm=False):
+def runDirect(args, cwd=None, env=None, shell=False):
+	# run direct inherits the stdin. so that it works a bit better in those scenarios.
+	# "if the default settings of None, no redirection will occur; the child’s file handles will be inherited from the parent. "
+	# https://docs.python.org/3/library/subprocess.html  # subprocess.Popen
+	# https://stackoverflow.com/a/53292311/260242
 	try:
-		# TODO add comm
 		ret = subprocess.run(
 			args, cwd=cwd, check=True, env=env, shell=shell
 		)
@@ -247,16 +205,15 @@ def runDirect(args, cwd=None, env=None, shell=False, comm=False):
 		return -10
 
 def run(args, cwd=None):
-	global exitTries, curTime, CONF, SLEEP
+	global exitTries, curTime
 
 	fixSelf(args)
-	for fix in custom.FIXES:
-		fix(args, CONF)
+	config.doFixes(args)
 
-	run_direct = shouldRunDirectly(args) or (custom.RUN_DIRECT and custom.RUN_DIRECT(args))
-	use_shell = shouldUseShell(args) or (custom.USE_SHELL and custom.USE_SHELL(args))
-	use_comm = shouldUseComm(args) or (custom.USE_COMM and custom.USE_COMM(args))
-	use_env = shouldUseEnv(args) or (custom.USE_ENV and custom.USE_ENV(args))
+	run_direct = shouldRunDirectly(args) or config.shouldRunDirect(args)
+	use_shell = shouldUseShell(args) or config.shouldUseShell(args)
+	use_comm = shouldUseComm(args) or config.shouldUseComm(args)
+	use_env = shouldUseEnv(args) or config.shouldUseEnv(args)
 	env = None if not use_env else os.environ.copy()
 	#if DEBUG:
 	#    open(os.path.join(WORK_PATH, 'clog'), 'a').write(
@@ -264,18 +221,18 @@ def run(args, cwd=None):
 	#    )
 
 	if run_direct:
-		return runDirect(args, cwd, env, use_shell, use_comm)
+		return runDirect(args, cwd, env, use_shell)
 
 	while True:
 		executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
 		if executed:
-			if SLEEP: time.sleep(SLEEP)
+			if config.SLEEP: time.sleep(config.SLEEP)
 			return retc
 
-		time.sleep(COOLDOWN)
-		if TIMEOUT > 0:
-			curTime += COOLDOWN
-			if curTime >= TIMEOUT:
+		time.sleep(config.COOLDOWN)
+		if config.TIMEOUT > 0:
+			curTime += config.COOLDOWN
+			if curTime >= config.TIMEOUT:
 				print("CLIENT TIMEOUT!")
 				return 9
 

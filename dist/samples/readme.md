@@ -1,6 +1,6 @@
 # Config
 
-## client.py
+## config.py (client.py)
 the config is embedded. this is a feature. the description is in the comments.
 
 ## worker.js (worker.py)

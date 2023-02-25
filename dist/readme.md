@@ -65,7 +65,7 @@ Not when you call it in its normal form (like `python client.py program_to_run a
   * connect through ssh (recommended, also recommended to use tmux).
   * or run directly on the machines if you have access to the hardware (not recommended)
 
-* note that you can modify client.py to use remote IPs (not only "localhost").
+* note that you can modify config.py to use remote IPs (not only "localhost").
 and you can open the ports on the worker's machine.
 but then all your communication will go in plain :] you won't want to do that.
 the worker has no concept of user or authentication, that's a design feature that took me several years to learn, so it wont change.
@@ -108,6 +108,6 @@ Running commands remotely is fine by using
 # Limitations
 
 piping doesn't work perfectly all the times.
-there's a config in client.py to selectively enable it (useComm).
-interactive software like grep from stdin won't know when to quit.
-other software can be piped normally
+there's a config in config.py to selectively enable it (useComm).
+interactive software like grep, sort, from stdin won't know when to quit.
+if you need to pipe stdin configure it to run directly (config.py::RUN_DIRECTLY)
