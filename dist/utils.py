@@ -43,6 +43,8 @@ def readPoll(p, timeout=1, default=None):
 	timeout_ms = timeout *1000
 	def read(): # i don't like to do this. but i just did.
 		ret = poller.poll(timeout_ms)
+		# if not ret: return default
+		# if ret[0][1] != select.POLLIN or ret[0][1] == select.POLLERR : return default
 		if ret: return p.read()
 		return default
 

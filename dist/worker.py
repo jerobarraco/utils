@@ -101,7 +101,7 @@ class WorkerService(rpyc.Service):
 	def stop(self, kill=True):
 		global LOCK, COLOR_IDX
 		# once stopped no need to stop again (hopefully), avoid problems when re-entering
-		# this function can be called many times, even as a result of this functions
+		# this function can be called many times, even as a result of this function
 		if not self.stop_lock.acquire(False):
 			return False # already stopping
 
@@ -276,11 +276,9 @@ class WorkerService(rpyc.Service):
 		except subprocess.TimeoutExpired:
 			pass
 
-		# removed, timer will kill the process already
-		# handle dead process
-		# check self.proc it might have been killed by the timer
-		#if self.proc and (self.proc.returncode is not None): # notice this is NOT None
-		#	self.stop() # will fill stop_* variables and do proper cleanup
+		# handle finished processes
+		if self.proc and (self.proc.returncode is not None): # notice this is NOT None
+			self.stop(True) # will fill stop_* variables and do proper cleanup. it doesn't matter if we kill it. but it's better to be safe.
 			# to avoid loosing output, we continue as normal, and check stopped on next comm
 
 		return stdout, stderr
