@@ -16,15 +16,18 @@ __version__ = "1.01"
 
 # times are in seconds
 DEBUG = True
+# time to wait for starting a work. if no worker gets free by this time. client will timeout.
 TIMEOUT = 180
 # this is the time between polling the workers for a free slot. 2 is the minimum, lower than that could choke the workers
 COOLDOWN = 2
 # the time to sleep after a task is done. useful for helping with network delays. will add time to each process, so it will make everything slower.
 SLEEP = 0
+
+# list of workers to use.
+# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
+# which has security implications
+# the order defines the priority. workers are always tested in order. (that's absolutely intentional).
 WORKERS = (
-	# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
-	# which has security implications
-	# the order defines the priority. workers are always tested in order. (that's absolutely intentional).
 	"localhost:7711",
 	"localhost:7722",
 )
@@ -56,9 +59,8 @@ USE_SHELL = (
 )
 
 # List of commands to pipe stdin to, * means all.
-# for example 'grep' and 'sort' (which doesn't work atm)
+# for example 'grep' or 'sort' (which now they work! (on linux))
 USE_COMM = (
-	# 'grep', 'sort', # commented out or it would actually process this and take up time
 )
 
 # stuff is commented out to avoid adding processing (also in functions)

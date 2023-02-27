@@ -54,8 +54,8 @@ USE_ENV = ()
 USE_SHELL = (
 )
 
-# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof", client might never finish.
-# for example 'grep' (which doesn't work atm)
+# List of commands to pipe stdin to, * means all.
+# for example 'grep', or "sort"
 USE_COMM = (
 )
 

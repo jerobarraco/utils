@@ -31,7 +31,7 @@ LOCK = None
 DEBUG = True
 USE_COLORS = False
 TIMEOUT = 1
-# time to wait for stdout on worker. a bit of an optimization, too low and can be slowed by network. too high and might wait for too long (in case there's coms)
+# time to wait for stdout on worker. a bit of an optimization, too low and can slow the network. too high and might wait for too long (in case there's coms)
 TIMEOUT_READ = 1
 
 COLORS_T = (
