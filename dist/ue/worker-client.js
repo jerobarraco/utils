@@ -1,7 +1,7 @@
 {
 	"host": "localhost",
 	"port": "7722",
-	"numTasks": 16,
+	"numTasks": 20,
 	"timeout": 360,
 	"debug": true,
 	"colors": true,

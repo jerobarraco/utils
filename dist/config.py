@@ -9,7 +9,7 @@ __version__ = "1.01"
 
 # ------- General config
 
-# Yeah the config is embedded. i don´t want to have to parse an extra file everytime this client is run.
+# Yeah, the config is embedded. i don´t want to have to parse an extra file everytime this client is run.
 # also json has to be parsed from string, from python, while a .py not only gets precompiled, but also parsed by python itself.
 # after all it's meant to run stuff that are already too heavy for one machine.
 # if you need different config copy the client+config+utils+worker files elsewhere. it's very small.
@@ -17,7 +17,9 @@ __version__ = "1.01"
 # times are in seconds
 DEBUG = True
 TIMEOUT = 180
+# this is the time between polling the workers for a free slot. 2 is the minimum, lower than that could choke the workers
 COOLDOWN = 2
+# the time to sleep after a task is done. useful for helping with network delays. will add time to each process, so it will make everything slower.
 SLEEP = 0
 WORKERS = (
 	# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
