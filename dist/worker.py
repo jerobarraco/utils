@@ -265,7 +265,7 @@ class WorkerService(rpyc.Service):
 		try:
 			# communicate will wait for the process to end (in this case with a timeout)
 			if self.proc.poll() is None: # Check if child process has terminated. Set and return returncode attribute. Otherwise, returns None.
-				if in_data:
+				if in_data and not self.proc.stdin.closed: # sometimes the process suicides before we get to send our data
 					self.proc.stdin.write(in_data)
 			# stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
 
@@ -275,6 +275,8 @@ class WorkerService(rpyc.Service):
 			stderr += self.readStdErr()
 		except subprocess.TimeoutExpired:
 			pass
+		except BrokenPipeError:
+			pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
 
 		# handle finished processes
 		if self.proc and (self.proc.returncode is not None): # notice this is NOT None

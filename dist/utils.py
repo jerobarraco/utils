@@ -40,12 +40,17 @@ def readIfAny(p, timeout=1, default=None):
 def readPoll(p, timeout=1, default=None):
 	poller = select.poll()
 	poller.register(p, select.POLLIN)
+	# read bytes and not strs
+	dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
 	timeout_ms = timeout *1000
+
 	def read(): # i don't like to do this. but i just did.
 		ret = poller.poll(timeout_ms)
 		# if not ret: return default
 		# if ret[0][1] != select.POLLIN or ret[0][1] == select.POLLERR : return default
-		if ret: return p.read()
+		if ret:
+			return dev.read()
+
 		return default
 
 	return read

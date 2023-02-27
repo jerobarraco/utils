@@ -112,8 +112,7 @@ def doCommWork(c):
 		#in_data = utils.readIfAny(sys.stdin, 0.001, None)
 		in_data = read()
 		if in_data is not None:
-			in_data = in_data.encode('utf-8')
-			if not in_data: # stdin will return '' on EOF.
+			if not in_data: # stdin will return b'' on EOF.
 				#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
 				c.root.stop(False) # stop but don't kill. (will wait for the subprocess to stop)
 

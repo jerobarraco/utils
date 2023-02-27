@@ -61,6 +61,7 @@ USE_SHELL = (
 # List of commands to pipe stdin to, * means all.
 # for example 'grep' or 'sort' (which now they work! (on linux))
 USE_COMM = (
+	'ffmpeg', 'grep', 'sort'
 )
 
 # stuff is commented out to avoid adding processing (also in functions)
