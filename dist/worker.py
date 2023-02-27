@@ -220,7 +220,8 @@ class WorkerService(rpyc.Service):
 			)
 			# create a reader
 			self.readStdOut = utils.readPoll(self.proc.stdout, TIMEOUT_READ, b'')
-			self.readStdErr = utils.readPoll(self.proc.stderr, 0.00001, b'') # no need to wait for this one as we wait for stdout
+			# no need to wait for this one as we wait for stdout
+			self.readStdErr = utils.readPoll(self.proc.stderr, 0.00001, b'')
 		except Exception as e:
 			self.stop_err += traceback.format_exc().encode('utf-8')
 			if DEBUG:
@@ -266,19 +267,22 @@ class WorkerService(rpyc.Service):
 			# communicate will wait for the process to end (in this case with a timeout)
 			if self.proc.poll() is None: # Check if child process has terminated. Set and return returncode attribute. Otherwise, returns None.
 				if in_data and not self.proc.stdin.closed: # sometimes the process suicides before we get to send our data
-					self.proc.stdin.write(in_data)
+					try:
+						self.proc.stdin.write(in_data)
+					except BrokenPipeError:
+						pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
 			# stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
 
-			#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
-			stdout += self.readStdOut()
-			#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
-			stderr += self.readStdErr()
+			if not self.proc.stdout.closed:
+				#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
+				stdout += self.readStdOut(1)
+			if not self.proc.stderr.closed:
+				#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
+				stderr += self.readStdErr(1)# size is important or it might hang on some situations (ffmpeg)
 		except subprocess.TimeoutExpired:
 			pass
-		except BrokenPipeError:
-			pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
 
-		# handle finished processes
+		# handle finished processes (important since it might have finished by itself)
 		if self.proc and (self.proc.returncode is not None): # notice this is NOT None
 			self.stop(True) # will fill stop_* variables and do proper cleanup. it doesn't matter if we kill it. but it's better to be safe.
 			# to avoid loosing output, we continue as normal, and check stopped on next comm

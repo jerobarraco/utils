@@ -44,12 +44,13 @@ def readPoll(p, timeout=1, default=None):
 	dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
 	timeout_ms = timeout *1000
 
-	def read(): # i don't like to do this. but i just did.
+	def read(size=None): # i don't like to do this. but i just did.
 		ret = poller.poll(timeout_ms)
-		# if not ret: return default
-		# if ret[0][1] != select.POLLIN or ret[0][1] == select.POLLERR : return default
-		if ret:
-			return dev.read()
+		if not ret: return default
+		if ret[0][1] in (select.POLLERR, select.POLLHUP) :
+			return default # left here for debug
+		if ret[0][1] == select.POLLIN:
+			return dev.read(size)
 
 		return default
 

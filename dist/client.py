@@ -104,6 +104,16 @@ def getConnection(address):
 		return None  # try next worker
 	return c
 
+def write(out=b'', err=b''):
+	if not sys.stdout.closed and out:
+		sys.stdout.buffer.write(out)
+		sys.stdout.flush()# testing
+	if not sys.stderr.closed and err:
+		sys.stderr.buffer.write(err)
+		sys.stderr.flush()# testing
+	#if out: sys.stdout.write(out.decode('utf-8'))
+	#if err: sys.stderr.write(err.decode('utf-8'))
+
 def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
 
@@ -119,9 +129,10 @@ def doCommWork(c):
 		res = c.root.comm(in_data=in_data)
 		if res is None: break
 
-		out, err = res
-		if out: sys.stdout.write(out.decode('utf-8'))
-		if err: sys.stderr.write(err.decode('utf-8'))
+		write(*res)
+		#out, err = res
+		# if out: sys.stdout.write(out.decode('utf-8'))
+		# if err: sys.stderr.write(err.decode('utf-8'))
 
 def doWork(c):
 	"""Does the work using the passed worker, without passing stdin"""
@@ -129,9 +140,10 @@ def doWork(c):
 		res = c.root.comm()
 		if res is None: break
 
-		out, err = res
-		if out: sys.stdout.write(out.decode('utf-8'))
-		if err: sys.stderr.write(err.decode('utf-8'))
+		write(*res)
+		#out, err = res
+		#if out: sys.stdout.write(out.decode('utf-8'))
+		#if err: sys.stderr.write(err.decode('utf-8'))
 
 def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	global exitTries
