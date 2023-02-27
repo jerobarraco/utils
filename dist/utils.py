@@ -9,6 +9,8 @@ __version__ = "1.00"
 
 import select
 import os
+import threading
+import queue
 
 # https://stackoverflow.com/a/58071295/260242
 import platform
@@ -55,6 +57,62 @@ def readPoll(p, timeout=1, default=None):
 		return default
 
 	return read
+
+class ReadThread(threading.Thread):
+	buff = None
+	def __init__(self, q, dev):
+		super().__init__()
+		self.q = q
+		self.dev = dev
+		self.read = readPoll(dev, 1, None)# notice none as default. and 1 as timeout.
+		self.stopRequest = threading.Event()
+		self.atEof = False
+
+	def run(self):
+		if self.stopRequest.is_set():
+			print("Tried to re-run a reader thread. that won't work")
+			return
+
+		while not self.stopRequest.is_set():
+			r = self.read(1) # read 1 byte. readPoll will wait at most 1 sec. otherwise we're likely to have a deadlock
+			if r == b'':
+				self.atEof = True # don´t reset it
+
+			something = r is not None
+			if not self.atEof and something:
+				self.q.put(r, True, None) # if full block
+
+	def join (self, timeout=None):
+		self.stopRequest.set()
+		super().join(timeout)
+		self.__clean__()
+
+	def __clean__(self):
+		del self.q
+		del self.dev
+		del self.read
+
+class Reader:
+	def __init__(self, dev, size = 1024):
+		self.queue = queue.Queue(size) # deques with maxlength will DISCARD elements https://docs.python.org/3/library/collections.html#collections.deque
+		self.thread = ReadThread(self.queue, dev)
+		self.thread.start()
+		pass
+
+	def read(self):
+		out = b''
+		while True:
+			try:
+				out += self.queue.get(False) # don´t block
+			except queue.Empty:
+				break
+		return out
+
+	def isEof(self):
+		return self.thread.atEof
+
+	def stop(self):
+		self.thread.join(3)
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences https://stackoverflow.com/a/37340245/260242
 class Colors:

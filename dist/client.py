@@ -117,14 +117,12 @@ def write(out=b'', err=b''):
 def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
 
-	read = utils.readPoll(sys.stdin, 0.001, None) # not waiting since the worker will... probably
+	#read = utils.readPoll(sys.stdin, 0.001, None) # not waiting since the worker will... probably
+	read = utils.Reader(sys.stdin)
 	while True:
+		in_data = read.read()
 		#in_data = utils.readIfAny(sys.stdin, 0.001, None)
-		in_data = read()
-		if in_data is not None:
-			if not in_data: # stdin will return b'' on EOF.
-				#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
-				c.root.stop(False) # stop but don't kill. (will wait for the subprocess to stop)
+		#in_data = read()
 
 		res = c.root.comm(in_data=in_data)
 		if res is None: break
@@ -133,6 +131,17 @@ def doCommWork(c):
 		#out, err = res
 		# if out: sys.stdout.write(out.decode('utf-8'))
 		# if err: sys.stderr.write(err.decode('utf-8'))
+
+		# only stop the command once we finish
+		if read.isEof():
+			c.root.stop(False)
+			time.sleep(config.COOLDOWN)# avoid spamming. we do need to check comm to see what the client does (so we need to keep looping).
+		#if in_data is not None:
+#			if not in_data: # stdin will return b'' on EOF.
+				#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
+#				c.root.stop(False) # stop but don't kill. (will wait for the subprocess to stop)
+	#while end
+	read.stop()
 
 def doWork(c):
 	"""Does the work using the passed worker, without passing stdin"""
