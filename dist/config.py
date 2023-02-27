@@ -45,7 +45,7 @@ _OTHERS = (# this is just here just to quickly disable or enable workers by movi
 # List of commands to run directly, * means all.
 # This skips workers, and as such, load balancing. careful...
 # but also uses the client.py stdin/out/err
-# e.g. "sort" will work here. but not in use_comm. (or 'mc' lol)
+# e.g. "sort" will work here. (or 'mc' lol)
 RUN_DIRECTLY = (
 )
 
@@ -59,9 +59,9 @@ USE_SHELL = (
 )
 
 # List of commands to pipe stdin to, * means all.
-# for example 'grep' or 'sort' (which now they work! (on linux))
+# for example 'grep' or 'sort' (which now they work! (on linux)) (ffmpeg hangs at the end)
 USE_COMM = (
-	'ffmpeg', 'grep', 'sort'
+	# 'grep', 'sort', 'ffmpeg', # 'vlc', 'cacaplay' doesn't work
 )
 
 # stuff is commented out to avoid adding processing (also in functions)
