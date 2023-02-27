@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # coding: utf-8
 #!/usr/local/bin/python3
 
@@ -10,19 +10,43 @@ __version__ = "1.00"
 import select
 import os
 
-#inspired by https://stackoverflow.com/a/51604225/260242
+# https://stackoverflow.com/a/58071295/260242
+import platform
+PLATFORM =  platform.system().lower()
+IS_LINUX =  PLATFORM == "linux"
+IS_WINDOWS = PLATFORM == "windows"
+IS_MAC = PLATFORM == "darwin"
+
 def readLen(p):
-	# works on mac, might work on linux, probably doesnt on windows, but you shouldn't be using it anyway
+	# doesn't really work on linux, use readPoll.
+	#inspired by https://stackoverflow.com/a/51604225/260242
+	# works on mac, probably doesn't on windows, but you shouldn't be using it anyway
 	# if windows: return 1 #would be 'ok'
-	size = os.fstat(p.fileno()).st_size
-	return size
+	if IS_MAC: return os.fstat(p.fileno()).st_size
+	#if IS_WINDOWS || IS_LINUX: return 1
+	return 1 # "she'll be right" (this might lock if there's nothing to read :( )
 
 def readIfAny(p, timeout=1, default=None):
+	# doesn't really work on linux, use readPoll for that
+	# left here in case mac breaks. at which point it would be better to have one function that uses the correct method depending on the platform
 	if select.select([p], [], [], timeout)[0]:
 		size = readLen(p)
 		if size:
 			return p.read(size)
 	return default
+
+# https://stackoverflow.com/a/10759061/260242
+# timeout in seconds
+def readPoll(p, timeout=1, default=None):
+	poller = select.poll()
+	poller.register(p, select.POLLIN)
+	timeout_ms = timeout *1000
+	def read(): # i don't like to do this. but i just did.
+		ret = poller.poll(timeout_ms)
+		if ret: return p.read()
+		return default
+
+	return read
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences https://stackoverflow.com/a/37340245/260242
 class Colors:

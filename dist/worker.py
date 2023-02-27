@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # coding: utf-8
 #!/usr/local/bin/python3
 
@@ -31,7 +31,8 @@ LOCK = None
 DEBUG = True
 USE_COLORS = False
 TIMEOUT = 1
-BUFF_SECS = 1
+# time to wait for stdout on worker. a bit of an optimization, too low and can be slowed by network. too high and might wait for too long (in case there's coms)
+TIMEOUT_READ = 1
 
 COLORS_T = (
 	utils.Colors.T_RED, utils.Colors.T_GREEN, utils.Colors.T_YELLOW, utils.Colors.T_BLUE, utils.Colors.T_PURPLE, utils.Colors.T_CYAN, utils.Colors.T_WHITE,
@@ -51,6 +52,10 @@ class WorkerService(rpyc.Service):
 	rc = 0
 	stop_out = b''
 	stop_err = b''
+	# functions to read stds polling
+	readStdOut = None
+	readStdErr = None
+
 	locked = False
 	timer = None
 	start_time = None
@@ -71,10 +76,20 @@ class WorkerService(rpyc.Service):
 	def on_disconnect(self, conn):
 		# code that runs after the connection has already closed
 		# (to finalize the service, if needed)
-		self.stop() # make sure to stop the process, can happen on certain conditions
+		self.stop(True) # make sure to stop the process, can happen on certain conditions
 
 	def __init__(self):
 		self.stop_lock = threading.Semaphore(1)
+		self.resetReaders()
+
+	def __emptyRead(self):
+		# an empty read function to have set while the process is not running
+		return b'' # if nothing avail return b'' or won't be able to concatenate
+
+	def resetReaders(self):
+		# ensure there are no problems
+		self.readStdErr = self.__emptyRead
+		self.readStdOut = self.__emptyRead
 
 	def write(self, msg):
 		global COLORS
@@ -83,7 +98,7 @@ class WorkerService(rpyc.Service):
 		sys.stdout.write(msg)
 		sys.stdout.flush()
 
-	def stop(self):
+	def stop(self, kill=True):
 		global LOCK, COLOR_IDX
 		# once stopped no need to stop again (hopefully), avoid problems when re-entering
 		# this function can be called many times, even as a result of this functions
@@ -98,9 +113,14 @@ class WorkerService(rpyc.Service):
 		# this func is called more than once sometimes, beware
 		if self.proc:
 			# these lines in this order are necessary according to docs
-			self.proc.kill()
-			# communicate will wait for the process to end
+			if kill:
+				# We need to avoid this when doing comms mode. since otherwise the process won't read the input and won't write the output.
+				# dont: https://stackoverflow.com/a/21143100/260242 closing stdin will break communicate. which is actually really important to have here.
+				# kill is optional to allow for ... killing commands
+				self.proc.kill()
+			# communicate will wait for the process to end (and closes stdin/out)
 			# stderr pipes to stdout, also communicate sets the return code
+			# very important to receive the rest of the out and err
 			o, e = self.proc.communicate()
 			self.stop_out += o
 			self.stop_err += e
@@ -113,6 +133,7 @@ class WorkerService(rpyc.Service):
 				self.write(WorkerService.T_STOP)
 
 		self.proc = None
+		self.resetReaders()
 		# return the color
 		if self.color_i >= 0:
 			COLOR_IDX.append(self.color_i) # use appendleft if you want to reuse a color as soon as it finishes
@@ -131,7 +152,7 @@ class WorkerService(rpyc.Service):
 			print("TIMEOUT!")
 		else:
 			self.write(WorkerService.T_TIME_OUT)
-		self.stop()
+		self.stop(True)
 		self.stop_err += b"\nOUTATIME!\n"
 
 	def run(self, cmd, cwd=None, env=None, shell=False):
@@ -141,7 +162,7 @@ class WorkerService(rpyc.Service):
 				print('Trying to run a process when im already running!')
 			else:
 				self.write(WorkerService.T_FORCE_STOP)
-			self.stop() #stopping just in case, old process might have been forsaken
+			self.stop(True) #stopping just in case, old process might have been forsaken
 			return False
 
 		self.stop_out = b""
@@ -195,7 +216,11 @@ class WorkerService(rpyc.Service):
 			self.proc = subprocess.Popen(
 				cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE, env=env, shell=shell,
 				# encoding='utf-8', bufsize=1, universal_newlines=True #bufsize is only supported in text mode (encoding)
+				#bufsize=1 forces line buffering. we don't want that
 			)
+			# create a reader
+			self.readStdOut = utils.readPoll(self.proc.stdout, TIMEOUT_READ, b'')
+			self.readStdErr = utils.readPoll(self.proc.stderr, 0.00001, b'') # no need to wait for this one as we wait for stdout
 		except Exception as e:
 			self.stop_err += traceback.format_exc().encode('utf-8')
 			if DEBUG:
@@ -204,7 +229,7 @@ class WorkerService(rpyc.Service):
 			else:
 				self.write(WorkerService.T_ERROR)
 
-			self.stop()
+			self.stop(True)
 			# self.rc = 6 # stop will set rc, but we might want to make this explicit
 		# still return True after this, so the client knows we tried to run (but failed)
 		# otherwise it will try again
@@ -239,26 +264,32 @@ class WorkerService(rpyc.Service):
 
 		try:
 			# communicate will wait for the process to end (in this case with a timeout)
-			if self.proc.poll() is None:
-				if in_data: self.proc.stdin.write(in_data)
-			# stdout, stderr = self.proc.communicate(input=in_data, timeout=BUFF_SECS) # this guy does not return ANY data until the proc finishes >:(
-			# if nothing avail return b'' or wont be able to concatenate
-			stdout += utils.readIfAny(self.proc.stdout, BUFF_SECS, b'')
-			# we don't really need to wait for this one, we've already waited above
-			stderr += utils.readIfAny(self.proc.stderr, 0.001, b'')
+			if self.proc.poll() is None: # Check if child process has terminated. Set and return returncode attribute. Otherwise, returns None.
+				if in_data:
+					self.proc.stdin.write(in_data)
+			# stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
+
+			#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
+			stdout += self.readStdOut()
+			#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
+			stderr += self.readStdErr()
 		except subprocess.TimeoutExpired:
 			pass
 
+		# removed, timer will kill the process already
 		# handle dead process
 		# check self.proc it might have been killed by the timer
-		if self.proc and (self.proc.returncode is not None):
-			self.stop() # will fill stop_*
+		#if self.proc and (self.proc.returncode is not None): # notice this is NOT None
+		#	self.stop() # will fill stop_* variables and do proper cleanup
 			# to avoid loosing output, we continue as normal, and check stopped on next comm
 
 		return stdout, stderr
 
-	def exposed_stop(self):
-		return self.stop()
+	def isRunning(self):
+		return self.proc and (self.proc.returncode is None)
+
+	def exposed_stop(self, kill=True):
+		return self.stop(kill)
 
 	def exposed_getExitCode(self):
 		return self.rc
@@ -267,8 +298,11 @@ class WorkerService(rpyc.Service):
 		"""Test the connection"""
 		return True
 
+	def exposed_isRunning(self):
+		return self.isRunning()
+
 def loadConf(fname):
-	global CONF, remapDirs, remapCmds, numTasks, LOCK, DEBUG, TIMEOUT, BUFF_SECS, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
+	global CONF, remapDirs, remapCmds, numTasks, LOCK, DEBUG, TIMEOUT, TIMEOUT_READ, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
 
 	CONF = json.load(open(fname, 'r'))
 	remapDirs = CONF.get('remapDirs', {})
@@ -278,7 +312,7 @@ def loadConf(fname):
 	DEBUG = CONF.get('debug', False)
 	USE_COLORS = CONF.get('colors', False)
 	TIMEOUT = CONF.get('timeout', 0)
-	BUFF_SECS = CONF.get('buff_secs', 0.25)
+	TIMEOUT_READ = CONF.get('timeoutRead', 1)
 
 	icons = CONF.get('icons', ())
 	if icons and len(icons)>4:
@@ -294,7 +328,7 @@ def loadConf(fname):
 	return
 
 def main():
-	global TIMEOUT, numTasks, CONF
+	global TIMEOUT, numTasks, CONF, TIMEOUT_READ
 	if len(sys.argv) < 2:
 		print("Please pass the config file as argument.")
 		exit(1)
@@ -303,7 +337,8 @@ def main():
 
 	port = CONF['port']
 	host = CONF['host']
-	print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s" % (host, port, numTasks, TIMEOUT))
+	print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s TimeoutRead=%s\nRemapCmds=%s\nRemapDirs=%s"
+		  % (host, port, numTasks, TIMEOUT, TIMEOUT_READ, repr(remapCmds), repr(remapDirs)))
 	from rpyc.utils.server import ThreadedServer
 	t = ThreadedServer(WorkerService, hostname=host, port=port, protocol_config={})
 	t.start()

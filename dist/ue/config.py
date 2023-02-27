@@ -126,7 +126,6 @@ def shouldRunDirect(args):
 
 	# "-" is required, fix for unreal asking clang for some stuff in private (using stdin (which works when using direct mode))
 	# "--version" is nice for speed
-
 	if last in ("-", "--version"): return True
 	return False
 

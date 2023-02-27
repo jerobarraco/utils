@@ -40,9 +40,9 @@ _OTHERS = (# this is just here just to quickly disable or enable workers by movi
 )
 
 # List of commands to run directly, * means all.
-# This skips workers, and as such, load balancing. careful.. eg 'ld'
+# This skips workers, and as such, load balancing. careful...
 # but also uses the client.py stdin/out/err
-# e.g. "sort" will work here. but not in use_comm
+# e.g. "sort" will work here. but not in use_comm. (or 'mc' lol)
 RUN_DIRECTLY = (
 )
 
@@ -55,10 +55,13 @@ USE_ENV = (
 USE_SHELL = (
 )
 
-# List of commands to pipe stdin to, * means all. TODO fix not being able to handle "eof", client might never finish.
-# for example 'grep' (which doesn't work atm)
+# List of commands to pipe stdin to, * means all.
+# for example 'grep' and 'sort' (which doesn't work atm)
 USE_COMM = (
+	# 'grep', 'sort', # commented out or it would actually process this and take up time
 )
+
+# stuff is commented out to avoid adding processing (also in functions)
 
 
 # ----- Functions
@@ -98,7 +101,6 @@ def fixAndroidLink(args):
 
 def fixUE(args):
 	pass
-
 
 # to be used by client
 def doFixes(args):

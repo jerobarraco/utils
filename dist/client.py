@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # coding: utf-8
 # can use this one if you installed with brew on mac, also change the other .py files
 #!/usr/local/bin/python3
@@ -106,18 +106,20 @@ def getConnection(address):
 
 def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
+
+	read = utils.readPoll(sys.stdin, 0.001, None) # not waiting since the worker will... probably
 	while True:
-		in_data = utils.readIfAny(sys.stdin, 0.001, None)
+		#in_data = utils.readIfAny(sys.stdin, 0.001, None)
+		in_data = read()
 		if in_data is not None:
 			in_data = in_data.encode('utf-8')
-			# TODO fix: stdin will return '' on EOF, doushio (how to tell the worker)????
-			# 	is there something to fix? do i really _need_ to terminate it? isnt eof on stdin a valid run condition? can stdin have something later?
-			#if not in_data:
-			#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
-			#	c.root.stop()
+			if not in_data: # stdin will return '' on EOF.
+				#	in_data = b'\x1A\r\n' # try sending ctrl z # not working atm https://bytes.com/topic/python/answers/696448-how-write-ctrl-z-serial-port
+				c.root.stop(False) # stop but don't kill. (will wait for the subprocess to stop)
 
-		res = c.root.comm(in_data=in_data)  # no need to wait, client waits
+		res = c.root.comm(in_data=in_data)
 		if res is None: break
+
 		out, err = res
 		if out: sys.stdout.write(out.decode('utf-8'))
 		if err: sys.stderr.write(err.decode('utf-8'))
@@ -169,7 +171,7 @@ def tryRunInAWorker(c, args, cwd=None, env=None, shell=False, comm=False):
 	return False, wretc
 
 def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
-
+	"""runs a command on the best worker possible."""
 	# select the workers to use based on the config
 	cur_workers = config.WORKERS
 	worker_is = config.clientsToUse(args)
@@ -189,6 +191,7 @@ def runInWorkers(args, cwd=None, env=None, shell=False, comm=False):
 	return False, -1 # could not execute
 
 def runDirect(args, cwd=None, env=None, shell=False):
+	"""runs a command directly as subprocess bypassing the workers"""
 	# run direct inherits the stdin. so that it works a bit better in those scenarios.
 	# "if the default settings of None, no redirection will occur; the child’s file handles will be inherited from the parent. "
 	# https://docs.python.org/3/library/subprocess.html  # subprocess.Popen
