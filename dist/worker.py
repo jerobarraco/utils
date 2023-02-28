@@ -268,30 +268,34 @@ class WorkerService(rpyc.Service):
 			if stderr or stdout:
 				# if there was some output, we need to return that. and we should get a new call to comm.
 				return stdout, stderr
-
+			# tell the client the process has finished. (important)
 			return None
 
-		try:
-			# communicate will wait for the process to end (in this case with a timeout)
-			if self.proc.poll() is None: # Check if child process has terminated. Set and return returncode attribute. Otherwise, returns None.
-				if in_data and not self.proc.stdin.closed: # sometimes the process suicides before we get to send our data
-					try:
-						self.proc.stdin.write(in_data)
-					except BrokenPipeError:
-						pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
-			# stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
+		if self.proc.poll() is None:
+			if in_data and not self.proc.stdin.closed: # sometimes the process suicides before we get to send our data
+				try:
+					self.proc.stdin.write(in_data)
+				except BrokenPipeError:
+					pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
 
-			time.sleep(TIMEOUT_READ) # manually wait since threaded polling does not wait. also wait *before* reading to ensure buffer is as full as possibel
-			stdout += self.std_out_r.read()
-			#if not self.proc.stdout.closed:
-				#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
-				#stdout += self.readStdOut(1)
-			stderr += self.std_err_r.read()
-			#if not self.proc.stderr.closed:
-				#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
-				#stderr += self.readStdErr(1)# size is important or it might hang on some situations (ffmpeg)
-		except subprocess.TimeoutExpired:
-			pass
+		#try:
+			# communicate will wait for the process to end (in this case with a timeout)
+			# NO. BAD. DON'T USE. EVER. stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
+		#except subprocess.TimeoutExpired:
+			#pass
+
+		if not (self.std_out_r.hasData() or self.std_err_r.hasData()):
+			# only wait if we haven't read anything. manually wait since threaded polling does not wait. also wait *before* reading to ensure buffer is as full as possible
+			time.sleep(TIMEOUT_READ) # a bit inefficient since we will wait the whole timeout but...
+
+		stdout += self.std_out_r.read()
+		#if not self.proc.stdout.closed:
+			#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
+			#stdout += self.readStdOut(1)
+		stderr += self.std_err_r.read()
+		#if not self.proc.stderr.closed:
+			#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
+			#stderr += self.readStdErr(1)# size is important, or it might hang on some situations (ffmpeg)
 
 		# handle finished processes (important since it might have finished by itself)
 		if self.proc and (self.proc.returncode is not None): # notice this is NOT None

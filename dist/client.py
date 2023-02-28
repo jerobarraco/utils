@@ -25,7 +25,7 @@ FNAME = os.path.basename(REAL_PATH)
 WORK_PATH = os.path.dirname(REAL_PATH)
 # don't go lower than 2, otherwise with many max concurrent tasks in xcode you'll get 20 requests per second,
 # will bloat on the server
-config.COOLDOWN = max(config.COOLDOWN, 2)
+config.COOLDOWN = max(config.COOLDOWN, 1)
 # has this format because this is for rpyc
 CON_CONF = {
 	"sync_request_timeout": None if config.TIMEOUT < 1 else config.TIMEOUT
@@ -120,6 +120,7 @@ def doCommWork(c):
 	#read = utils.readPoll(sys.stdin, 0.001, None) # not waiting since the worker will... probably
 	read = utils.Reader(sys.stdin)
 	while True:
+		is_eof = read.isEof() # ask BEFORE reading since the worker will delay.
 		in_data = read.read()
 		#in_data = utils.readIfAny(sys.stdin, 0.001, None)
 		#in_data = read()
@@ -133,7 +134,7 @@ def doCommWork(c):
 		# if err: sys.stderr.write(err.decode('utf-8'))
 
 		# only stop the command once we finish
-		if read.isEof():
+		if is_eof:
 			c.root.stop(False)
 			time.sleep(config.COOLDOWN)# avoid spamming. we do need to check comm to see what the client does (so we need to keep looping).
 		#if in_data is not None:

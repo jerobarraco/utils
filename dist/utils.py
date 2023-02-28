@@ -70,6 +70,8 @@ if IS_WINDOWS:
 		def poll(self, timeout):
 			if stdCanRead(self.p, timeout):
 				return [self.p, select.POLLIN]
+			if self.p.closed:
+				return [self.p, select.POLLHUP]
 			return []
 
 		def register(self, p, unused):
@@ -77,8 +79,12 @@ if IS_WINDOWS:
 
 	select.poll = WindowsPoll
 	select.POLLIN = 1
-	select.POLLHUP = 2 # no idea
-	select.POLLERR = 3 # no idea
+	select.POLLPRI = 2
+	select.POLLERR = 8
+	select.POLLHUP = 16
+	select.POLLNVAL = 32
+	select.POLLRDHUP = 8192
+
 
 # https://stackoverflow.com/a/10759061/260242
 # timeout in seconds
@@ -89,14 +95,28 @@ def readPoll(p, timeout=1, default=None):
 	dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
 	timeout_ms = timeout *1000
 
+	def isFlag(v, f):
+		return (v & f) == f
+
+	_eof = b''
 	def read(size=None): # i don't like to do this. but i just did.
-		if dev.closed: return default # turns out that poller WILL return pollin ANYWAY but read will crash
+		if dev.closed:
+			return _eof # turns out that poller WILL return pollin ANYWAY but read will crash
+
 		ret = poller.poll(timeout_ms)
-		if not ret: return default
-		if ret[0][1] in (select.POLLERR, select.POLLHUP):
-			return default # left here for debug
-		if ret[0][1] == select.POLLIN:
+		if not ret:
+			return default
+
+		val = ret[0][1]
+		if isFlag(val, select.POLLIN) or isFlag(val, select.POLLPRI):
 			return dev.read(size)
+
+		# isFlag(val, select.POLLHUP) apparently you can still read with pollhup
+		# or isFlag(val, select.POLLRDHUP)
+		# notice the if above. this is ar error as long as there's no "in"
+		if isFlag(val, select.POLLHUP) or isFlag(val, select.POLLRDHUP) or isFlag(val, select.POLLERR) or isFlag(val, select.POLLNVAL):
+			#return default # left here for debug # TODO raise?
+			return _eof # "lie" and tell them is eof (is not actually a lie they can't read)
 
 		return default
 
@@ -121,12 +141,13 @@ class ReadThread(threading.Thread):
 			r = self.read(1) # read 1 byte. readPoll will wait at most 1 sec. otherwise we're likely to have a deadlock
 			if r == b'':
 				self.atEof = True # don´t reset it
+				break # optimization (after eof nothing can be read right?)
 
 			something = r is not None
 			if not self.atEof and something:
 				self.q.put(r, True, None) # if full block
 
-	def join (self, timeout=None):
+	def join(self, timeout=None):
 		self.stopRequest.set()
 		super().join(timeout)
 		self.__clean__()
@@ -151,6 +172,9 @@ class Reader:
 			except queue.Empty:
 				break
 		return out
+
+	def hasData(self):
+		return self.queue.not_empty
 
 	def isEof(self):
 		return self.thread.atEof
