@@ -13,6 +13,7 @@ import sys
 import json
 import subprocess
 import threading
+import time
 import traceback
 import collections
 
@@ -33,7 +34,7 @@ USE_COLORS = False
 TIMEOUT = 1
 # time to wait for stdout on worker. a bit of an optimization, too low and can slow the network. too high and might wait for too long (in case there's coms)
 TIMEOUT_READ = 1
-
+READ_SIZE = 1024
 COLORS_T = (
 	utils.Colors.T_RED, utils.Colors.T_GREEN, utils.Colors.T_YELLOW, utils.Colors.T_BLUE, utils.Colors.T_PURPLE, utils.Colors.T_CYAN, utils.Colors.T_WHITE,
 	utils.Colors.T_B_RED, utils.Colors.T_B_GREEN, utils.Colors.T_B_YELLOW, utils.Colors.T_B_BLUE, utils.Colors.T_B_PURPLE, utils.Colors.T_B_CYAN, utils.Colors.T_B_WHITE,
@@ -53,8 +54,11 @@ class WorkerService(rpyc.Service):
 	stop_out = b''
 	stop_err = b''
 	# functions to read stds polling
-	readStdOut = None
-	readStdErr = None
+	#readStdOut = None
+	#readStdErr = None
+	# std readers
+	std_out_r = None
+	std_err_r = None
 
 	locked = False
 	timer = None
@@ -82,14 +86,15 @@ class WorkerService(rpyc.Service):
 		self.stop_lock = threading.Semaphore(1)
 		self.resetReaders()
 
-	def __emptyRead(self):
-		# an empty read function to have set while the process is not running
-		return b'' # if nothing avail return b'' or won't be able to concatenate
+	#def __emptyRead(self):
+	#	# an empty read function to have set while the process is not running
+	#	return b'' # if nothing avail return b'' or won't be able to concatenate
 
 	def resetReaders(self):
 		# ensure there are no problems
-		self.readStdErr = self.__emptyRead
-		self.readStdOut = self.__emptyRead
+		#self.readStdErr = self.__emptyRead
+		#self.readStdOut = self.__emptyRead
+		self.std_out_r = self.std_err_r = None
 
 	def write(self, msg):
 		global COLORS
@@ -156,7 +161,7 @@ class WorkerService(rpyc.Service):
 		self.stop_err += b"\nOUTATIME!\n"
 
 	def run(self, cmd, cwd=None, env=None, shell=False):
-		global TIMEOUT, DEBUG, USE_COLORS
+		global TIMEOUT, DEBUG, USE_COLORS, READ_SIZE
 		if self.proc:
 			if DEBUG:
 				print('Trying to run a process when im already running!')
@@ -218,10 +223,13 @@ class WorkerService(rpyc.Service):
 				# encoding='utf-8', bufsize=1, universal_newlines=True #bufsize is only supported in text mode (encoding)
 				#bufsize=1 forces line buffering. we don't want that
 			)
+			# create readers
+			self.std_out_r = utils.Reader(self.proc.stdout, READ_SIZE)
+			self.std_err_r = utils.Reader(self.proc.stderr, READ_SIZE)
 			# create a reader
-			self.readStdOut = utils.readPoll(self.proc.stdout, TIMEOUT_READ, b'')
+			#self.readStdOut = utils.readPoll(self.proc.stdout, TIMEOUT_READ, b'')
 			# no need to wait for this one as we wait for stdout
-			self.readStdErr = utils.readPoll(self.proc.stderr, 0.00001, b'')
+			#self.readStdErr = utils.readPoll(self.proc.stderr, 0.00001, b'')
 		except Exception as e:
 			self.stop_err += traceback.format_exc().encode('utf-8')
 			if DEBUG:
@@ -273,12 +281,15 @@ class WorkerService(rpyc.Service):
 						pass # sucky i know. happens rarely on useComs when the subprocess is too fast. the rest of the code will handle this properly. leaving this as this to allow for debugging if needed.
 			# stdout, stderr = self.proc.communicate(input=in_data, timeout=TIMEOUT_READ) # this guy does not return ANY data until the proc finishes >:(
 
-			if not self.proc.stdout.closed:
+			time.sleep(TIMEOUT_READ) # manually wait since threaded polling does not wait. also wait *before* reading to ensure buffer is as full as possibel
+			stdout += self.std_out_r.read()
+			#if not self.proc.stdout.closed:
 				#stdout += utils.readIfAny(self.proc.stdout, TIMEOUT_READ, b'')
-				stdout += self.readStdOut(1)
-			if not self.proc.stderr.closed:
+				#stdout += self.readStdOut(1)
+			stderr += self.std_err_r.read()
+			#if not self.proc.stderr.closed:
 				#stderr += utils.readIfAny(self.proc.stderr, 0.00001, b'')
-				stderr += self.readStdErr(1)# size is important or it might hang on some situations (ffmpeg)
+				#stderr += self.readStdErr(1)# size is important or it might hang on some situations (ffmpeg)
 		except subprocess.TimeoutExpired:
 			pass
 
@@ -306,7 +317,7 @@ class WorkerService(rpyc.Service):
 		return self.isRunning()
 
 def loadConf(fname):
-	global CONF, remapDirs, remapCmds, numTasks, LOCK, DEBUG, TIMEOUT, TIMEOUT_READ, USE_COLORS, COLORS, COLOR_IDX, COLORS_B
+	global CONF, remapDirs, remapCmds, numTasks, LOCK, DEBUG, TIMEOUT, TIMEOUT_READ, USE_COLORS, COLORS, COLOR_IDX, COLORS_B, READ_SIZE
 
 	CONF = json.load(open(fname, 'r'))
 	remapDirs = CONF.get('remapDirs', {})
@@ -317,6 +328,7 @@ def loadConf(fname):
 	USE_COLORS = CONF.get('colors', False)
 	TIMEOUT = CONF.get('timeout', 0)
 	TIMEOUT_READ = CONF.get('timeoutRead', 1)
+	READ_SIZE = CONF.get('readSize', READ_SIZE)
 
 	icons = CONF.get('icons', ())
 	if icons and len(icons)>4:
@@ -332,7 +344,7 @@ def loadConf(fname):
 	return
 
 def main():
-	global TIMEOUT, numTasks, CONF, TIMEOUT_READ
+	global TIMEOUT, numTasks, CONF, TIMEOUT_READ, READ_SIZE
 	if len(sys.argv) < 2:
 		print("Please pass the config file as argument.")
 		exit(1)
@@ -341,8 +353,8 @@ def main():
 
 	port = CONF['port']
 	host = CONF['host']
-	print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s TimeoutRead=%s\nRemapCmds=%s\nRemapDirs=%s"
-		  % (host, port, numTasks, TIMEOUT, TIMEOUT_READ, repr(remapCmds), repr(remapDirs)))
+	print("Starting worker. Host=%s:%s Tasks=%s Timeout=%s TimeoutRead=%s ReadSize=%s \nRemapCmds=%s\nRemapDirs=%s"
+		  % (host, port, numTasks, TIMEOUT, TIMEOUT_READ, READ_SIZE, repr(remapCmds), repr(remapDirs)))
 	from rpyc.utils.server import ThreadedServer
 	t = ThreadedServer(WorkerService, hostname=host, port=port, protocol_config={})
 	t.start()

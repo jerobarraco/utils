@@ -19,6 +19,11 @@ IS_LINUX =  PLATFORM == "linux"
 IS_WINDOWS = PLATFORM == "windows"
 IS_MAC = PLATFORM == "darwin"
 
+if IS_WINDOWS:
+	# used for the windows poll
+	import win32event, win32file, pywintypes
+
+# doesn't really work. left for testing.
 def readLen(p):
 	# doesn't really work on linux, use readPoll.
 	#inspired by https://stackoverflow.com/a/51604225/260242
@@ -28,14 +33,52 @@ def readLen(p):
 	#if IS_WINDOWS || IS_LINUX: return 1
 	return 1 # "she'll be right" (this might lock if there's nothing to read :( )
 
+def _stdCanReadWindows(p, timeout=1):
+	# https://stackoverflow.com/a/71860247/260242
+	handle = pywintypes.HANDLE(p.fileno())
+	try:
+		# without this the wait might return despite there not being any input
+		win32file.FlushFileBuffers(handle)
+	except pywintypes.error:
+		# this sometimes fails, but we don't mind
+		pass
+	return win32event.WaitForSingleObject(
+		handle, int(timeout * 1000)
+	) == win32event.WAIT_OBJECT_0
+
+def _stdCanReadPosix(p, timeout=1):
+	# https://stackoverflow.com/a/71860247/260242
+	# note this is not very trustworthy
+	rlist = select.select( [p], [], [], timeout)[0]
+	return bool(rlist)
+
+stdCanRead = _stdCanReadWindows if IS_WINDOWS else _stdCanReadPosix
+
+# doesnt really works. left for testing
 def readIfAny(p, timeout=1, default=None):
 	# doesn't really work on linux, use readPoll for that
 	# left here in case mac breaks. at which point it would be better to have one function that uses the correct method depending on the platform
-	if select.select([p], [], [], timeout)[0]:
+	if stdCanRead(p, timeout):
 		size = readLen(p)
 		if size:
 			return p.read(size)
 	return default
+
+if IS_WINDOWS:
+	# stub WindowsPoll class to cover that on windows there is no one
+	class WindowsPoll: # fake it till you make it (TM)
+		def poll(self, timeout):
+			if stdCanRead(self.p, timeout):
+				return [self.p, select.POLLIN]
+			return []
+
+		def register(self, p, unused):
+			self.p = p
+
+	select.poll = WindowsPoll
+	select.POLLIN = 1
+	select.POLLHUP = 2 # no idea
+	select.POLLERR = 3 # no idea
 
 # https://stackoverflow.com/a/10759061/260242
 # timeout in seconds
@@ -47,9 +90,10 @@ def readPoll(p, timeout=1, default=None):
 	timeout_ms = timeout *1000
 
 	def read(size=None): # i don't like to do this. but i just did.
+		if dev.closed: return default # turns out that poller WILL return pollin ANYWAY but read will crash
 		ret = poller.poll(timeout_ms)
 		if not ret: return default
-		if ret[0][1] in (select.POLLERR, select.POLLHUP) :
+		if ret[0][1] in (select.POLLERR, select.POLLHUP):
 			return default # left here for debug
 		if ret[0][1] == select.POLLIN:
 			return dev.read(size)
