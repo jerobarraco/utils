@@ -99,7 +99,7 @@ def readPoll(p, timeout=1, default=None):
 		return (v & f) == f
 
 	_eof = b''
-	def read(size=None): # i don't like to do this. but i just did.
+	def read(size=1): # i don't like to do this. but i just did.
 		if dev.closed:
 			return _eof # turns out that poller WILL return pollin ANYWAY but read will crash
 
@@ -109,7 +109,10 @@ def readPoll(p, timeout=1, default=None):
 
 		val = ret[0][1]
 		if isFlag(val, select.POLLIN) or isFlag(val, select.POLLPRI):
-			return dev.read(size)
+			try:
+				return dev.read(size)
+			except Exception:
+				return _eof
 
 		# isFlag(val, select.POLLHUP) apparently you can still read with pollhup
 		# or isFlag(val, select.POLLRDHUP)
