@@ -29,7 +29,7 @@ def readLen(p):
 	#inspired by https://stackoverflow.com/a/51604225/260242
 	# works on mac, probably doesn't on windows, but you shouldn't be using it anyway
 	# if windows: return 1 #would be 'ok'
-	if IS_MAC: return os.fstat(p.fileno()).st_size
+	if IS_MAC: return os.fstat(p.fileno()).st_size # will lock on linux
 	#if IS_WINDOWS || IS_LINUX: return 1
 	return 1 # "she'll be right" (this might lock if there's nothing to read :( )
 
@@ -101,6 +101,14 @@ def readPoll(p, timeout=1, default=None):
 
 	_eof = b''
 	def read(size=1): # i don't like to do this. but i just did.
+		# using readIfAny
+		v = readIfAny(p, timeout, None)
+		if v is None: return default
+		# if v == _eof: return _eof # redundant
+		return v
+
+		############## other option using poller. actually it does not improves the situation and makes this code more complicated and i haven't tested on windows
+		"""
 		ret = poller.poll(timeout_ms)
 		if not ret:
 			return default
@@ -115,13 +123,12 @@ def readPoll(p, timeout=1, default=None):
 		# notice the if above. there is nothing to read as long as there's no "in"
 		# 	- well actually this is a lie. when ffmpeg closes due to an existing file,
 		#	- it's so quick that we can't read the content before pollhup and it poller REMOVES the pollin even though there's still data. WTF?!
-		# 	- https://pymotw.com/3/select/index.html all this socket stuff, i don't like.
 		# 	- i rather have ffmpeg breaking than having my software locking up. i need to test it more.
 		if isFlag(val, select.POLLHUP) or isFlag(val, select.POLLRDHUP) or isFlag(val, select.POLLERR) or isFlag(val, select.POLLNVAL):
 			return _eof # tell them is eof
 
 		return default
-
+		"""
 	return read
 
 class _ReadThread(threading.Thread):
