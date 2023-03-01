@@ -23,9 +23,9 @@ if IS_WINDOWS:
 	# used for the windows poll
 	import win32event, win32file, pywintypes
 
-# doesn't really work. left for testing.
 def readLen(p):
-	# doesn't really work on linux, use readPoll.
+	# returns the len to read on a device
+	# doesn't really work (on linux). left for testing.
 	#inspired by https://stackoverflow.com/a/51604225/260242
 	# works on mac, probably doesn't on windows, but you shouldn't be using it anyway
 	# if windows: return 1 #would be 'ok'
@@ -42,21 +42,20 @@ def _stdCanReadWindows(p, timeout=1):
 	except pywintypes.error:
 		# this sometimes fails, but we don't mind
 		pass
-	return win32event.WaitForSingleObject(
-		handle, int(timeout * 1000)
-	) == win32event.WAIT_OBJECT_0
+	ret = win32event.WaitForSingleObject(handle, int(timeout * 1000))
+	hasRead = ret == win32event.WAIT_OBJECT_0
+	return hasRead
 
 def _stdCanReadPosix(p, timeout=1):
 	# https://stackoverflow.com/a/71860247/260242
 	# note this is not very trustworthy
-	rlist = select.select( [p], [], [], timeout)[0]
+	rlist = select.select([p], [], [], timeout)[0]
 	return bool(rlist)
 
 stdCanRead = _stdCanReadWindows if IS_WINDOWS else _stdCanReadPosix
 
-# doesnt really works. left for testing
 def readIfAny(p, timeout=1, default=None):
-	# doesn't really work on linux, use readPoll for that
+	# doesn't really work on linux.
 	# left here in case mac breaks. at which point it would be better to have one function that uses the correct method depending on the platform
 	if stdCanRead(p, timeout):
 		size = readLen(p)
@@ -66,7 +65,7 @@ def readIfAny(p, timeout=1, default=None):
 
 if IS_WINDOWS:
 	# stub WindowsPoll class to cover that on windows there is no one
-	class WindowsPoll: # fake it till you make it (TM)
+	class _WindowsPoll: # fake it till you make it (TM)
 		def poll(self, timeout):
 			if stdCanRead(self.p, timeout):
 				return [self.p, select.POLLIN]
@@ -77,7 +76,7 @@ if IS_WINDOWS:
 		def register(self, p, unused):
 			self.p = p
 
-	select.poll = WindowsPoll
+	select.poll = _WindowsPoll
 	select.POLLIN = 1
 	select.POLLPRI = 2
 	select.POLLERR = 8
@@ -85,14 +84,16 @@ if IS_WINDOWS:
 	select.POLLNVAL = 32
 	select.POLLRDHUP = 8192
 
-
-# https://stackoverflow.com/a/10759061/260242
-# timeout in seconds
 def readPoll(p, timeout=1, default=None):
+	"""read a device by polling it. works ok on linux and has a stub for windows, probably works on mac.
+	 used by Reader class. you can use with Reader or directly (discouraged)."""
+	# https://stackoverflow.com/a/10759061/260242
+	# timeout in seconds
+
 	poller = select.poll()
 	poller.register(p, select.POLLIN)
-	# read bytes and not strs
-	dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
+	# read bytes and not strs. actually explicit is better than implicit
+	# dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
 	timeout_ms = timeout *1000
 
 	def isFlag(v, f):
@@ -100,9 +101,6 @@ def readPoll(p, timeout=1, default=None):
 
 	_eof = b''
 	def read(size=1): # i don't like to do this. but i just did.
-		if dev.closed:
-			return _eof # turns out that poller WILL return pollin ANYWAY but read will crash
-
 		ret = poller.poll(timeout_ms)
 		if not ret:
 			return default
@@ -110,32 +108,36 @@ def readPoll(p, timeout=1, default=None):
 		val = ret[0][1]
 		if isFlag(val, select.POLLIN) or isFlag(val, select.POLLPRI):
 			try:
-				return dev.read(size)
+				return p.read(size)
 			except Exception:
-				return _eof
+				return _eof # let it burn x3 (better/easier than checking if closed at the start. since poller will do it and sometimes in between those 2 calls it gets closed :( )
 
-		# isFlag(val, select.POLLHUP) apparently you can still read with pollhup
-		# or isFlag(val, select.POLLRDHUP)
-		# notice the if above. this is ar error as long as there's no "in"
+		# notice the if above. there is nothing to read as long as there's no "in"
+		# 	- well actually this is a lie. when ffmpeg closes due to an existing file,
+		#	- it's so quick that we can't read the content before pollhup and it poller REMOVES the pollin even though there's still data. WTF?!
+		# 	- https://pymotw.com/3/select/index.html all this socket stuff, i don't like.
+		# 	- i rather have ffmpeg breaking than having my software locking up. i need to test it more.
 		if isFlag(val, select.POLLHUP) or isFlag(val, select.POLLRDHUP) or isFlag(val, select.POLLERR) or isFlag(val, select.POLLNVAL):
-			#return default # left here for debug # TODO raise?
-			return _eof # "lie" and tell them is eof (is not actually a lie they can't read)
+			return _eof # tell them is eof
 
 		return default
 
 	return read
 
-class ReadThread(threading.Thread):
+class _ReadThread(threading.Thread):
+	"""class for handling the threaded read by polling
+	None means no data, b'' means eof. the opposite of what i would do. but that's how the system works."""
 	buff = None
 	def __init__(self, q, dev):
 		super().__init__()
 		self.q = q
 		self.dev = dev
-		self.read = readPoll(dev, 1, None)# notice none as default. and 1 as timeout.
+		self.read = readPoll(dev, 1, None) # notice none as default. and 1 as timeout.
 		self.stopRequest = threading.Event()
 		self.atEof = False
 
 	def run(self):
+		# don't call this directly unless you want problems. call "start"
 		if self.stopRequest.is_set():
 			print("Tried to re-run a reader thread. that won't work")
 			return
@@ -161,17 +163,20 @@ class ReadThread(threading.Thread):
 		del self.read
 
 class Reader:
+	"""Reads from a device in the background. with a buffer. and has a sane interface that wont except all the time or cause crashes.
+	Can only be used once. Once this has been stopped. you need a new instance.
+	Please call with a device of bytes, not str (e.g. stdin.buffer stdout.buffer)."""
 	def __init__(self, dev, size = 1024):
 		self.queue = queue.Queue(size) # deques with maxlength will DISCARD elements https://docs.python.org/3/library/collections.html#collections.deque
-		self.thread = ReadThread(self.queue, dev)
+		self.thread = _ReadThread(self.queue, dev)
 		self.thread.start()
-		pass
 
 	def read(self):
+		"""reads whatever is available at that moment and returns it and forgets it. returns b'' when empty. check isEof to know if it has finished."""
 		out = b''
 		while True:
 			try:
-				out += self.queue.get(False) # don´t block
+				out += self.queue.get(False) # don't block we will read as much as we can but no more. will except on empty.
 			except queue.Empty:
 				break
 		return out
@@ -182,8 +187,9 @@ class Reader:
 	def isEof(self):
 		return self.thread.atEof
 
-	def stop(self):
-		self.thread.join(3)
+	def stop(self, timeout=1):
+		self.thread.join(timeout)
+		return self.read() # empty buffers or the thread might be stuck trying to write
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences https://stackoverflow.com/a/37340245/260242
 class Colors:

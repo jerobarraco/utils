@@ -107,10 +107,10 @@ def getConnection(address):
 def write(out=b'', err=b''):
 	if not sys.stdout.closed and out:
 		sys.stdout.buffer.write(out)
-		sys.stdout.flush()# testing
+		#sys.stdout.flush()# testing
 	if not sys.stderr.closed and err:
 		sys.stderr.buffer.write(err)
-		sys.stderr.flush()# testing
+		#sys.stderr.flush()# testing
 	#if out: sys.stdout.write(out.decode('utf-8'))
 	#if err: sys.stderr.write(err.decode('utf-8'))
 
@@ -118,7 +118,7 @@ def doCommWork(c):
 	"""Does the work using the passed worker, and tries to pass the stdin into it"""
 
 	#read = utils.readPoll(sys.stdin, 0.001, None) # not waiting since the worker will... probably
-	read = utils.Reader(sys.stdin)
+	read = utils.Reader(sys.stdin.buffer)
 	while True:
 		is_eof = read.isEof() # ask BEFORE reading since the worker will delay.
 		in_data = read.read()
@@ -135,7 +135,9 @@ def doCommWork(c):
 
 		# only stop the command once we finish
 		if is_eof:
-			c.root.stop(False)
+			# maybe this is causing issues (stopping the process before it actually processed the input)
+			# but we can't close the input because .communicate will try-to and cry (die).
+			c.root.stop(False) # important for comms. otherwise they won't stop (closes their input)
 			time.sleep(config.COOLDOWN)# avoid spamming. we do need to check comm to see what the client does (so we need to keep looping).
 		#if in_data is not None:
 #			if not in_data: # stdin will return b'' on EOF.
@@ -143,6 +145,7 @@ def doCommWork(c):
 #				c.root.stop(False) # stop but don't kill. (will wait for the subprocess to stop)
 	#while end
 	read.stop()
+	del read
 
 def doWork(c):
 	"""Does the work using the passed worker, without passing stdin"""
