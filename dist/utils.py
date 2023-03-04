@@ -98,23 +98,13 @@ def readPoll(p, timeout=1, default=None):
 
 	poller = select.poll()
 	poller.register(p, select.POLLIN)
-	# read bytes and not strs. actually explicit is better than implicit
-	# dev = getattr(p, "buffer", p) # conveniently stdin.buffer and stdin and stdout has a read function
 	timeout_ms = timeout *1000
 
 	def isFlag(v, f):
 		return (v & f) == f
 
 	_eof = b''
-	def read(size=1): # i don't like to do this. but i just did.
-		# using readIfAny
-		v = readIfAny(p, timeout, None)
-		if v is None: return default
-		# if v == _eof: return _eof # redundant
-		return v
-
-		############## other option using poller. actually it does not improves the situation and makes this code more complicated and i haven't tested on windows
-		"""
+	def read(size=1): # i don't like to do this . but i just did. (embedded functions)
 		ret = poller.poll(timeout_ms)
 		if not ret:
 			return default
@@ -134,20 +124,22 @@ def readPoll(p, timeout=1, default=None):
 			return _eof # tell them is eof
 
 		return default
-		"""
 	return read
+
+
+# Note on readPoll: actually it does not improve the situation and makes this code more complicated and i haven't tested on windows which i think it's not even supported.
+# it is due to be deleted soon ish.
 
 class _ReadThread(threading.Thread):
 	"""class for handling the threaded read by polling
 	None means no data, b'' means eof. the opposite of what i would do. but that's how the system works."""
-	buff = None
 	def __init__(self, q, dev):
 		super().__init__()
 		self.q = q
 		self.dev = dev
-		self.read = readPoll(dev, 1, None) # notice none as default. and 1 as timeout.
 		self.stopRequest = threading.Event()
 		self.atEof = False
+		# self.read = readPoll(dev, 1, None) # notice none as default. and 1 as timeout.. unused. doesn´t work better and is more complicated
 
 	def run(self):
 		# don't call this directly unless you want problems. call "start"
@@ -156,7 +148,8 @@ class _ReadThread(threading.Thread):
 			return
 
 		while not self.stopRequest.is_set():
-			r = self.read(1) # read 1 byte. readPoll will wait at most 1 sec. otherwise we're likely to have a deadlock
+			# r = self.read(1) # read 1 byte. readPoll will wait at most 1 sec. otherwise we're likely to have a deadlock
+			r = readIfAny(self.dev, 1, None) # wait for 1 second. and none is the default. important both.
 			if r == b'':
 				self.atEof = True # don´t reset it
 				break # optimization (after eof nothing can be read right?)
@@ -173,7 +166,7 @@ class _ReadThread(threading.Thread):
 	def __clean__(self):
 		del self.q
 		del self.dev
-		del self.read
+		#del self.read
 
 class Reader:
 	"""Reads from a device in the background. with a buffer. and has a sane interface that wont except all the time or cause crashes.
