@@ -14,8 +14,8 @@ import queue
 
 # https://stackoverflow.com/a/58071295/260242
 import platform
-PLATFORM =  platform.system().lower()
-IS_LINUX =  PLATFORM == "linux"
+PLATFORM = platform.system().lower()
+IS_LINUX = PLATFORM == "linux"
 IS_WINDOWS = PLATFORM == "windows"
 IS_MAC = PLATFORM == "darwin"
 
@@ -35,6 +35,8 @@ def readLen(p):
 
 def _stdCanReadWindows(p, timeout=1):
 	# https://stackoverflow.com/a/71860247/260242
+	if p.closed: return False
+	# TODO this is having issues. test. maybe is just the pipe being closed?
 	handle = pywintypes.HANDLE(p.fileno())
 	try:
 		# without this the wait might return despite there not being any input
@@ -42,9 +44,13 @@ def _stdCanReadWindows(p, timeout=1):
 	except pywintypes.error:
 		# this sometimes fails, but we don't mind
 		pass
-	ret = win32event.WaitForSingleObject(handle, int(timeout * 1000))
-	hasRead = ret == win32event.WAIT_OBJECT_0
-	return hasRead
+	try:
+		# TODO does this actually works once?
+		ret = win32event.WaitForSingleObject(handle, int(timeout * 1000))
+		hasRead = ret == win32event.WAIT_OBJECT_0
+		return hasRead
+	except:
+		return False # error
 
 def _stdCanReadPosix(p, timeout=1):
 	# https://stackoverflow.com/a/71860247/260242

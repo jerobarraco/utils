@@ -3,7 +3,7 @@ for number in {1..2}
 do
   echo Running client "$number"
   #/Users/user/dist/client.py sleep 2 &
-  ./client.py sleep 2 &
+  ../../client.py sleep 2 &
 done
 
 wait < <(jobs -p)

@@ -1,0 +1,35 @@
+#!/bin/bash
+# tests the communication is async and doesn't wait until the end
+# ../client.py ./timer
+
+max=10;
+for ((i = 0 ; i < max ; i++ ));
+do
+	echo "$i";
+	sleep 1;
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ../../../ue/client.py telnet towel.blinkenlights.nl
+

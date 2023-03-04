@@ -43,15 +43,9 @@ def shouldRunDirectly(args):
 	if not config.WORKERS: return True
 	if cmdInList(args[0], config.RUN_DIRECTLY): return True
 
-	# run local files directly (mac)
-	for a in args[1:]:
-		if a.startswith('@/private') or a.startswith('/private'): return True
-
 	return False
 
 def shouldUseShell(args):
-	for a in args[1:]:
-		if a in ('&&', ';', '||'): return True
 	return cmdInList(args[0], config.USE_SHELL)
 
 def shouldUseEnv(args):

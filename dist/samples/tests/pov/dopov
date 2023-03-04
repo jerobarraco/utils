@@ -1,0 +1,17 @@
+#!/bin/bash
+max=50;
+for ((i = 0 ; i < max ; i++ ));
+do 
+	echo "$i";
+	../../../client.py povray +WT1 ./hyper.pov +KFF"$max" +SF"$i" +EF"$i" +Ohyper &
+done
+
+wait
+echo "all done"
+
+sleep 2
+# ffmpeg -r 1 -i hyper%03d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p out.mp4
+ffmpeg -r 25 -i hyper%02d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p out.mp4 -y
+
+#time povray +KFF50 hyper.pov 
+

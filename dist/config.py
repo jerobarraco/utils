@@ -29,7 +29,9 @@ SLEEP = 0
 # the order defines the priority. workers are always tested in order. (that's absolutely intentional).
 WORKERS = (
 	"localhost:7711",
+	"localhost:7744",
 	"localhost:7722",
+	"192.168.178.27:7733",
 )
 
 _OTHERS = (# this is just here just to quickly disable or enable workers by moving this line up&down
@@ -45,7 +47,6 @@ _OTHERS = (# this is just here just to quickly disable or enable workers by movi
 # List of commands to run directly, * means all.
 # This skips workers, and as such, load balancing. careful...
 # but also uses the client.py stdin/out/err
-# e.g. "sort" will work here. (or 'mc' lol)
 RUN_DIRECTLY = (
 )
 
@@ -59,9 +60,9 @@ USE_SHELL = (
 )
 
 # List of commands to pipe stdin to, * means all.
-# for example 'grep' or 'sort' (which now they work! (on linux)) (ffmpeg hangs at the end)
+# for example 'grep' or 'sort' (which now they work! (on linux))
 USE_COMM = (
-	# 'grep', 'sort', 'ffmpeg', # 'vlc', 'cacaplay' doesn't work
+	# 'cat', 'grep', 'sort', 'ffmpeg', # 'vlc', 'cacaplay' doesn't work
 )
 
 # stuff is commented out to avoid adding processing (also in functions)
@@ -114,21 +115,29 @@ def doFixes(args):
 
 def clientsToUse(args):
 	# example; the local worker is index 0
-#	last = args[-1]
-#	local_w = (0, )
-#	if "PCH." in last: return local_w
-#	if last == '-lgcc': return local_w
+#	last = args[-1] # cache last argument
+#	local_w = (0, ) # cache local worker
+#	if "PCH." in last: return local_w # example running files that contains "PCH." locally
+#	if last == '-lgcc': return local_w # example running unreal linking on local client
+	# if args[0] == "povray": return [0, 1] # or running povray only on two clients
+	# if args[0] in ('mspaint', 'notepad'): return (3,) # or running these on windows
 	return None
 
 def shouldRunDirect(args):
-	# example: fix for unreal asking clang for some stuff in private
-	# if args[-1] == "-": return True
+	for a in args[1:]:
+		# run private local files directly (mac)
+		if a.startswith('@/private') or a.startswith('/private'): return True
 	return False
 
 def shouldUseShell(args):
+	for a in args[1:]:
+		# run commands that are meant to be run in shell on a shell
+		if a in ('&&', ';', '||', '|', '>', '<'): return True
 	return False
 
 def shouldUseComm(args):
+	# example: fix for unreal asking clang for some stuff in private
+	# if args[-1] == "-": return True
 	return False
 
 def shouldUseEnv(args):

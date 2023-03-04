@@ -8,6 +8,8 @@ __license__ = "LGPL V3"
 __version__ = "1.01"
 
 
+# this config file is a copy of the base one, tweaked for unreal on linux
+
 # ------- General config
 
 # Yeah the config is embedded. i don´t want to have to parse an extra file everytime this client is run.
@@ -24,8 +26,9 @@ WORKERS = (
 	# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
 	# which has security implications
 	# the order defines the priority. workers are always tested in order. (that's absolutely intentional).
-	"localhost:7711",
 	"localhost:7722",
+	"localhost:7711",
+	"localhost:7744"
 )
 
 _OTHERS = (# this is just here just to quickly disable or enable workers by moving this line up&down
@@ -41,9 +44,8 @@ _OTHERS = (# this is just here just to quickly disable or enable workers by movi
 # List of commands to run directly, * means all.
 # This skips workers, and as such, load balancing. careful.. eg 'ld'
 # but also uses the client.py stdin/out/err
-# e.g. "sort" will work here. but not in use_comm. (fun fact, mc works as well)
+# (fun fact, mc works)
 RUN_DIRECTLY = (
-	"mc"
 )
 
 # List of commands to run using the current environment, * means all
@@ -117,20 +119,22 @@ def clientsToUse(args):
 	# force these to use local worker.
 	# -lgcc (link) is a speed-ups (since it uses lots of disk and memory but not much cpu) (still goes through the worker, so there's load balancing)
 	# PCH is a fix (not always happens) notice the difference in syntax
-	if (last == "-lgcc") or ("PCH." in last):
+	if (last in ("-lgcc", "-")) or ("PCH." in last):
 		return local_w
 	return None
 
 def shouldRunDirect(args):
 	last = args[-1]
 
-	# "-" is required, fix for unreal asking clang for some stuff in private (using stdin (which works when using direct mode))
-	#    actually now this also works when putting it into useComm but this way is more stable anyway
+	# "-" is needed, fix for unreal asking clang for some stuff in private (using stdin)
+	#    actually now this also works when putting it into useComm but this way might be more bulletproof.
 	# "--version" is nice for speed
 	if last in ("-", "--version"): return True
 	return False
 
 def shouldUseShell(args):
+	for a in args[1:]:
+		if a in ('&&', ';', '||', '|', '>', '<'): return True
 	return False
 
 def shouldUseComm(args):
