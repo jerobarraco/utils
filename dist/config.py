@@ -23,10 +23,10 @@ COOLDOWN = 2
 # the time to sleep after a task is done. useful for helping with network delays. will add time to each process, so it will make everything slower.
 SLEEP = 0
 
-# list of workers to use.
 # you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
 # which has security implications
 # the order defines the priority. workers are always tested in order. (that's absolutely intentional).
+# ideally you should put your local worker first. to ensure you exhaust your local resources first (which is faster than going through the network)
 WORKERS = (
 	"localhost:7711",
 	"localhost:7744",
@@ -62,7 +62,7 @@ USE_SHELL = (
 # List of commands to pipe stdin to, * means all.
 # for example 'grep' or 'sort' (which now they work! (on linux))
 USE_COMM = (
-	# 'cat', 'grep', 'sort', 'ffmpeg', # 'vlc', 'cacaplay' doesn't work
+	'cat', 'grep', 'sort', 'ffmpeg', # 'vlc', 'cacaplay' doesn't work
 )
 
 # stuff is commented out to avoid adding processing (also in functions)

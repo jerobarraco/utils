@@ -35,7 +35,6 @@ def readLen(p):
 
 def _stdCanReadWindows(p, timeout=1):
 	# https://stackoverflow.com/a/71860247/260242
-	if p.closed: return False
 	# TODO this is having issues. test. maybe is just the pipe being closed?
 	handle = pywintypes.HANDLE(p.fileno())
 	try:
@@ -63,7 +62,7 @@ stdCanRead = _stdCanReadWindows if IS_WINDOWS else _stdCanReadPosix
 def readIfAny(p, timeout=1, default=None):
 	# doesn't really work on linux.
 	# left here in case mac breaks. at which point it would be better to have one function that uses the correct method depending on the platform
-	if stdCanRead(p, timeout):
+	if (not p.closed) and stdCanRead(p, timeout):
 		size = readLen(p)
 		if size:
 			return p.read(size)

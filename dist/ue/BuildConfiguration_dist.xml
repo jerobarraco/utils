@@ -8,8 +8,11 @@
 -->
 <Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
     <BuildConfiguration>
-        <!--<MaxParallelActions>6</MaxParallelActions>-->
-		<MaxParallelActions>16</MaxParallelActions>
+        <!--
+            <MaxParallelActions>6</MaxParallelActions>
+            <bUseUnityBuild>false</bUseUnityBuild>
+        -->
+		<MaxParallelActions>34</MaxParallelActions>
 		<bAllCores>true</bAllCores>
 	</BuildConfiguration>
 

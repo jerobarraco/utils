@@ -26,9 +26,10 @@ WORKERS = (
 	# you can use an ip or "localhost" this is intentional. but "localhost" is preferred, since that will force you to set up ssh tunneling
 	# which has security implications
 	# the order defines the priority. workers are always tested in order. (that's absolutely intentional).
-	"localhost:7722",
+	# ideally you should put your local worker first. to ensure you exhaust your local resources first (which is faster than going through the network)
 	"localhost:7711",
-	"localhost:7744"
+	"localhost:7744",
+	"localhost:7722",
 )
 
 _OTHERS = (# this is just here just to quickly disable or enable workers by moving this line up&down
@@ -113,8 +114,9 @@ def clientsToUse(args):
 	# run pchs only on local instance, but through the worker, hence using load balancing
 	# the local worker is index 0
 	last = args[-1]
-	# local worker is in position 1, this is not ideal. it should be 0, but since im testing this i put it in 1.
-	local_w = (1, )
+	# local worker is last, this is not ideal. it should be 0 (to force use it your local resources first), but since im testing this i put it in 1.
+	local_w_index = len(WORKERS)-1
+	local_w = (local_w_index, )
 
 	# force these to use local worker.
 	# -lgcc (link) is a speed-ups (since it uses lots of disk and memory but not much cpu) (still goes through the worker, so there's load balancing)

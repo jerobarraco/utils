@@ -144,7 +144,26 @@ Running commands remotely is fine by using
 
 # Limitations
 
-piping doesn't work perfectly all the times.
-there's a config in config.py to selectively enable it (useComm).
+## piping
+piping doesn't work perfectly all the times. but it works pretty well.
+there's a config in config.py to selectively enable it (useComm and shouldUseComm) .
 interactive software like grep, sort, from stdin won't know when to quit.
-if you need to pipe stdin configure it to run directly (config.py::RUN_DIRECTLY)
+if you need to pipe stdin configure it to use coms or run directly (config.py::RUN_DIRECTLY, shouldRunDirectly)
+
+## process priorities
+
+Process prios are not forwarded and probably wont (since they could require root access so its uses are limited).
+You can renice the worker.py process and that will affect all it's future children as well. 
+i consider this the best approach at the time, and sufficient for my needs.
+
+
+# Notes:
+The readmes will always be outdated (by how much is another story). The comments will likely be less outdated.
+The real documentation is the code. :)
+
+# Want to do
+Stuff i'd like to do at some point if i get to:
+
+* make ue shadercompiler work
+* test on amazon ec2 instances
+* more windows support 

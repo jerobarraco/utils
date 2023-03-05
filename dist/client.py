@@ -248,14 +248,15 @@ def run(args, cwd=None):
 		executed, retc = runInWorkers(args, cwd, env, use_shell, use_comm)
 		if executed:
 			if config.SLEEP: time.sleep(config.SLEEP)
-			return retc
+			return retc # all good quit, we're done
 
+		# not executed. need to try again.
 		time.sleep(config.COOLDOWN)
 		if config.TIMEOUT > 0:
 			curTime += config.COOLDOWN
 			if curTime >= config.TIMEOUT:
 				print("CLIENT TIMEOUT!")
-				return 9
+				return 9  # TODO make these rets into constant into utils so it's more user-friendly
 
 
 if __name__ == "__main__":
