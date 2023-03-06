@@ -16,6 +16,7 @@ run the worker with its config. (see samples/worker.js for a sample on how to co
 
     dist> ./worker.py workerX.js
 
+make sure you've configured the client with `config.py`
 now you can run any command in that worker by running the client
 
     dist> ./client.py echo 1
@@ -24,7 +25,7 @@ Note:
   You can run them directly, or explicitly with python.
   But make sure they are executable and that the shebang is set correctly (mac might like something different).
 
-## Shadow a program (turn a program to be distributed, invoked by workers)
+## Shadow a program (turn a program to be distributed)
 
 move your program to have an extra "_"
 
@@ -33,12 +34,12 @@ move your program to have an extra "_"
 The client program will add a _ when it needs to call the original software.
 The workers will also call the command with a _ after it.
 
-Now make a link to client.py in the place of the program
+Now make a link to client.py in the place of the original program
 
     ln -s ../../dist/client.py clang
 
 Note: The extra "_" only applies when "shadowing" a real program. Like when doing a symlink like above.
-Not when you call it in its normal form (like `python client.py program_to_run args`)
+Not when you call it in its direct form (like `python client.py program_to_run args`)
 This is intentional, since we want to avoid calling the client in a cycle.
 
 You can look at `samples/dxon` for an example.
@@ -131,10 +132,14 @@ restarting the worker is uncomfortable as well, but as long as you don't need to
 Linux, Mac, windows partially
 
 ## Windows
-Shadowing a command is tricky and i haven´t done it properly yet, but might be doable.
-I don't use windows, so feel free to donate to me to do this.
-You would need to use something like pyinstaller or cxfreeze (haven't tried it). 
-The issue with pyinstaller was that it exatracts the program each time you run it. (you could change it but i haven't tinkered with it yet.)
+Shadowing a command is tricky and i haven't done it properly yet, but might be doable.
+I don't use windows, and ms charges me for using their software, so feel free to donate to me to do this.
+You would need to use something like pyinstaller or cxfreeze (haven't tried it).
+I tried pyInstaller but had some issues with it extracting everything on every run.
+(you could change it but i haven't tinkered with it yet.)
+I would need to test setting it to not autoextract, or use another tool.
+Since windows don't use shebangs so i cant use that trick to run the script instead of an executable.
+Another way might be playing around with the registry. but i don't really wanna do that.
 
 Running commands remotely is fine by using 
     
@@ -152,7 +157,7 @@ if you need to pipe stdin configure it to use coms or run directly (config.py::R
 
 ## process priorities
 
-Process prios are not forwarded and probably wont (since they could require root access so its uses are limited).
+Process prios are not forwarded and probably never will (since they could require root access so its uses are limited).
 You can renice the worker.py process and that will affect all it's future children as well. 
 i consider this the best approach at the time, and sufficient for my needs.
 
