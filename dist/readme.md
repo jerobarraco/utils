@@ -134,18 +134,27 @@ Linux, Mac, windows partially
 ## Windows
 Shadowing a command is tricky and i haven't done it properly yet, but might be doable.
 I don't use windows, and ms charges me for using their software, so feel free to donate to me to do this.
-You would need to use something like pyinstaller or cxfreeze (haven't tried it).
-I tried pyInstaller but had some issues with it extracting everything on every run.
-(you could change it but i haven't tinkered with it yet.)
-I would need to test setting it to not autoextract, or use another tool.
-Since windows don't use shebangs so i cant use that trick to run the script instead of an executable.
-Another way might be playing around with the registry. but i don't really wanna do that.
 
+Windows don't use shebangs so i cant use that trick to run the script instead of an executable.
+Another way might be playing around with the registry (and potentially adding your own extension). but i don't really wanna do that. (though i might try it)
+You would need to use something like pyinstaller or cxfreeze (haven't tried cxf).
+
+with pyinstaller you would need to run it with the -D or --onedir option. so it doesnt extract on each run, which will break shadowing.
+nevertheless, after doing that, and doing a link and shadowing your program;
+when you try to run the shadowed client pyinstaller will get confused and won't be able to find its files. 
+(you could link python3xx.dll but still the rest will be missing and i certainly don't want to say that the solution is to copy ALL the files to the destination folder,
+i mean you could and probably it will work, but it's not up to my standards (i do have them), so i haven't even tried.)
+(oh btw, ms wants you have admin rights to run mklink lol!!!)
+I haven't figured out how to fix this yet. I would need to test using another tool (cxf eg).
+
+But running not in shadow mode works.
 Running commands remotely is fine by using 
     
     python3 client.py command arg1 arg2 arg3
 
-
+Also it seems that in windows the piping is not as realtime as it's on linux for some reason (ms). e.g. 
+running netstat or ping seems to wait for the program to finish before giving the output. 
+Which is not what happens on linux.
 
 # Limitations
 
@@ -155,6 +164,10 @@ there's a config in config.py to selectively enable it (useComm and shouldUseCom
 interactive software like grep, sort, from stdin won't know when to quit.
 if you need to pipe stdin configure it to use coms or run directly (config.py::RUN_DIRECTLY, shouldRunDirectly)
 
+Potentially, process that finish very quickly, (and by themselves (aka suicide)) might loose their output or part of it.
+e.g. running ffmpeg on a file that already exists and ffmpeg exits with a warning, and you get part of the message.
+or running "ping -h" doesn't show the message (either that or there's another error here that i might inspect later).
+
 ## process priorities
 
 Process prios are not forwarded and probably never will (since they could require root access so its uses are limited).
@@ -163,7 +176,8 @@ i consider this the best approach at the time, and sufficient for my needs.
 
 
 # Notes:
-The readmes will always be outdated (by how much is another story). The comments will likely be less outdated.
+The readmes will always be outdated (by how much is another story). 
+The comments will likely be less outdated, yet don't expect them to be up to date.
 The real documentation is the code. :)
 
 # Want to do
@@ -171,4 +185,5 @@ Stuff i'd like to do at some point if i get to:
 
 * make ue shadercompiler work
 * test on amazon ec2 instances
-* more windows support 
+* test a "cloud pc rental service" (don't wanna give names) when possible.
+* support windows shadowing, maybe...

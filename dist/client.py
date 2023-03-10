@@ -41,9 +41,7 @@ def cmdInList(arg, cmd_list):
 
 def shouldRunDirectly(args):
 	if not config.WORKERS: return True
-	if cmdInList(args[0], config.RUN_DIRECTLY): return True
-
-	return False
+	return cmdInList(args[0], config.RUN_DIRECTLY)
 
 def shouldUseShell(args):
 	return cmdInList(args[0], config.USE_SHELL)
@@ -66,13 +64,17 @@ def fixSelf(args):
 	# and also allows linking to client (shadowing) (the official way to use this script)
 	# #goes first as it can clash with the one below
 	#if args[0] == REAL_PATH:
-	# this one is safer, means that if its called by something with the same file name (client.py), regardless of the folder.
+	# this one is safer, means that if it's called by something with the same file name (client.py), regardless of the folder.
 	# you can rename your client.py otherwise
-	if os.path.basename(args[0]) == FNAME:
+	cmd = args[0]
+	if os.path.basename(cmd) == FNAME:
+		args.pop(0)
+	# pyinstaller "fix". the arg will be client.exe but the name is client.py
+	elif utils.IS_WINDOWS and os.path.basename(os.path.splitext(cmd)[0] + ".py") == FNAME:
 		args.pop(0)
 	else: # this is safer, specially in windows, where we might want to use pyinstaller to shadow an exe
 		# this is the usual usage, avoid looping on itself.
-		args[0] = args[0] + '_'
+		args[0] = cmd + '_'
 
 conns = {}
 curTime = 0
@@ -265,4 +267,4 @@ if __name__ == "__main__":
 	exitTries = 0
 
 	retc = run(sys.argv[:], os.getcwd())
-	exit(retc)
+	sys.exit(retc) # using sys.exit instead of exit since pyinstaller will fail otherwise :/

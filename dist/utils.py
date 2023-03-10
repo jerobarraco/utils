@@ -48,7 +48,8 @@ def _stdCanReadWindows(p, timeout=1):
 		ret = win32event.WaitForSingleObject(handle, int(timeout * 1000))
 		hasRead = ret == win32event.WAIT_OBJECT_0
 		return hasRead
-	except:
+	except Exception as e:
+		# (6, 'WaitForSingleObject', 'The handle is invalid.')
 		return False # error
 
 def _stdCanReadPosix(p, timeout=1):
