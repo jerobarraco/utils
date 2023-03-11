@@ -3,6 +3,7 @@
 xpath="/home/nande/work/UE5.2/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64/v21_clang-15.0.1-centos7/x86_64-unknown-linux-gnu/bin/"
 bpath="/home/nande/work/UE5.2/Engine/Saved/UnrealBuildTool"
 dpath="/home/nande/work/repos/utils/dist/ue"
+spath="/home/nande/work/UE5.2/Engine/Binaries/Linux/"
 
 # copy the Buildconfiguration for distribution
 cp "$dpath/BuildConfiguration_normal.xml" "$bpath/BuildConfiguration.xml"

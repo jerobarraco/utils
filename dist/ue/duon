@@ -7,11 +7,13 @@ dpath="/home/nande/work/repos/utils/dist/ue"
 
 # probably need to change this
 xpath="/home/nande/work/UE5.2/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64/v21_clang-15.0.1-centos7/x86_64-unknown-linux-gnu/bin/"
+# and this
+spath="/home/nande/work/UE5.2/Engine/Binaries/Linux/"
 
 # and this
 bpath="/home/nande/work/UE5.2/Engine/Saved/UnrealBuildTool/"
 
-pushd $xpath || exit
+pushd $xpath || exit -1
 
 if test -f "clang_"; then
   rm ./clang  # delete the link, we will redo it, this is on purpose a feature.
@@ -34,5 +36,18 @@ ln -s "$dpath/client.py" clang++
 cp "$dpath/BuildConfiguration_dist.xml" "$bpath/BuildConfiguration.xml"
 popd
 
-echo "ue distributed enabled"
+# now shader worker
+pushd $spath || exit -2
 
+if test -f "ShaderCompileWorker_"; then
+  rm ./ShaderCompileWorker  # delete the link, we will redo it, this is on purpose a feature.
+else
+  # reorganize the originals
+  mv ShaderCompileWorker ShaderCompileWorker_
+fi
+
+ln -s "$dpath/client.py" ShaderCompileWorker
+
+popd
+
+echo "ue distributed enabled"
