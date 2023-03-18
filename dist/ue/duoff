@@ -25,4 +25,18 @@ ln -s ./clang++_ ./clang++
 
 popd
 
+# now shader worker
+pushd $spath || exit -2
+
+if test -f "ShaderCompileWorker_"; then
+  rm ./ShaderCompileWorker  # delete the link, we will redo it, this is on purpose a feature.
+else
+  # reorganize the originals
+  mv ShaderCompileWorker ShaderCompileWorker_
+fi
+
+ln -s ./ShaderCompileWorker_ ./ShaderCompileWorker
+
+popd
+
 echo "ue distributed disabled"
