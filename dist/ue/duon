@@ -1,7 +1,15 @@
 #!/bin/bash
-# don't make this number much bigger than the actual number of possible concurrent tasks on workers, otherwise you might risk a timeout
-# but do maybe make it 1 bigger to account for overhead starting tasks
-numTasks=29
+# to set the max numbers of task for the compiler you need to edit the file BuildConfiguration_dist.xml
+
+# to set bump the number of shader workers modify Engine/Config/BaseEngine.ini
+# bAllowCompilingThroughWorkers=True
+# bAllowAsynchronousShaderCompiling=True
+# NumUnusedShaderCompilingThreads=0
+# NumUnusedShaderCompilingThreadsDuringGame=4
+# make the next one lower than your core count
+# ShaderCompilerCoreCountThreshold=6
+# PercentageUnusedShaderCompilingThreads=0
+
 # path where your client script is stored
 dpath="/home/nande/work/repos/utils/dist/ue"
 
