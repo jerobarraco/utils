@@ -1,0 +1,4 @@
+#!/bin/bash
+# breaks mouse grab, useful when working with unreal and it locks the mouse
+setxkbmap -option grab:break_actions
+xdotool key XF86Ungrab

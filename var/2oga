@@ -1,0 +1,11 @@
+#!/bin/bash
+# converts a file to opus using ffmpeg
+# compression level 10 forces best compression at the cost of cpu
+# https://stackoverflow.com/a/49142056/260242
+# oga is the best extension for players
+# opus doesnt support -q:a
+# -map_metadata 0 Copy tags from MP3 to OPUS file
+outfile="${1%.*}.oga"
+ffmpeg -i "$1" -c:a libopus -compression_level 10 -b:a 210k -vbr on -map_metadata 0 $outfile
+# set the original date from the original file
+touch -r "$1" $outfile

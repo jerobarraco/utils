@@ -1,0 +1,6 @@
+#!/bin/bash
+# converts a file to mp3 using ffmpeg
+# -ab 192k
+outfile="${1%.*}.mp3"
+ffmpeg -i "$1" -acodec libmp3lame -q:a 2 -map_metadata 0 $outfile
+touch -r "$1" $outfile

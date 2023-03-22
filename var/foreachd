@@ -1,0 +1,10 @@
+#!/bin/bash
+# http://stackoverflow.com/questions/10523415/ddg#10523501
+# similar to parallel but i made it myself and can run on other computers B)
+for i in ./*
+do
+	/home/nande/work/repos/utils/dist/client.py $@ "$i" &
+done
+
+wait < <(jobs -p)
+exit 0

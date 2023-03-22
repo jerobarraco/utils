@@ -1,0 +1,24 @@
+#!/bin/bash
+# converts a a video into a gif optimized
+
+fullfile="$1"
+base=$(basename "$fullfile")
+extension="${base##*.}"
+filename="${base%.*}"
+outfile="$(pwd)/${filename}.gif"
+notifyKey="string:x-canonical-private-synchronous:"
+
+palette="/tmp/palette.png"
+filters="fps=20,scale=320:-1:flags=lanczos"
+
+notify-send "Giffying" "Generating palette for:\n'$base'" -i notification-audio-volume-medium -h int:value:30 -h "${notifyKey}"
+
+ffmpeg -i "$1" -vf "$filters,palettegen" -y $palette
+
+notify-send "Giffying" "Compressing to:\n'$outfile'" -i notification-audio-volume-medium -h int:value:50 -h "${notifyKey}"
+
+ffmpeg -i "$1" -i $palette -lavfi "$filters [x]; [x][1:v] paletteuse" -y "${outfile}"
+
+notify-send "Giffying" "<b>Done!</b>\n" -i notification-audio-volume-medium -h int:value:100 -h "${notifyKey}"
+
+rm "$palette"
