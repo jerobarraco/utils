@@ -34,7 +34,7 @@ def SBarF(vals):
 def getFFT(data, hamm=None):
     """Given some data and rate, returns FFTfreq and FFT (half)."""
     # taken from stackoverflow somewhere, the only one that worked
-    if hamm:
+    if hamm is not None:
         data = data*hamm
     #data = data * np.hamming(len(data))
     data = data - np.average(data)# zero center
