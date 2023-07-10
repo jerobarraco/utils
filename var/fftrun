@@ -1,4 +1,5 @@
 #!/bin/bash
 #parec --channels=1 --latency-msec=20 --rate=22000 |python -u fft.py 10000 256
 
-parec --channels=1 --latency-msec=20 --rate=16000 | python -u fft.py
+parec --channels=1 --latency-msec=20 --rate=15000 | python -u ~/bin/fft.py
+#parec --channels=1 --latency-msec=20 --rate=22000 | python -u ~/bin/fft.py

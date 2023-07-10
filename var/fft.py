@@ -28,16 +28,22 @@ def BarF(v):
     cv = min(1.0, max(0.0, v))
     return BARSF[int(cv * MAX_BF)]
 
+def BarFU(v):
+    """unsafe, but optimized version, v MUST be between 0 and 1"""
+    return BARSF[int(v * MAX_BF)]
+
 def SBarF(vals):
     return "".join(map(BarF, vals))
 
-def getFFT(data, hamm=None):
+HAMM = np.zeros(1)
+def getFFT(data):
+    global HAMM
     """Given some data and rate, returns FFTfreq and FFT (half)."""
     # taken from stackoverflow somewhere, the only one that worked
-    if hamm is not None:
-        data = data*hamm
-    #data = data * np.hamming(len(data))
-    data = data - np.average(data)# zero center
+    # avg = np.average(data)
+    #data = data - avg# zero center # not necessary
+    data = data*HAMM
+
     fft = np.fft.rfft(data)
     fft = np.abs(fft)
     fft = fft[:int(len(fft) / 2)] # halve
@@ -47,7 +53,7 @@ def getFFT(data, hamm=None):
     #return freq[:int(len(freq) / 2)], fft
     return fft
 
-VALS_MAX = 20000.0
+VALS_MAX = 40000.0
 VALS_W = 256
 VALS = [0]*VALS_W
 LINES_N = 20
@@ -55,19 +61,33 @@ LINES = [""]*LINES_N
 RATE = 200
 BS = 2
 W = 50
+
+VALS_DMAX = VALS_MAX
+VALS_DDECAY = 50.0
+def DynNorm(v):
+    global VALS_DMAX
+    VALS_DMAX = np.max([VALS_DMAX-VALS_DDECAY, np.average(v), 1.0])# i is the min, otherwise is a divide by 0
+    #print (VALS_DMAX)
+    return v/VALS_DMAX
+
 def main():
-    global VALS
-    hamm = np.hamming(VALS_W)
+    global VALS, HAMM
+    HAMM = np.hamming(VALS_W)
     while True:
+        # get the needed buffer in one call
         c = sys.stdin.buffer.read(BS*VALS_W)
-        VALS = list([ struct.unpack("<h", c[i*BS:((i+1)*BS)])[0] for i in range(VALS_W)])
-        f = getFFT(VALS, hamm)
+        # convert to unsigned short low end
+        VALS = list([
+            struct.unpack("<h", c[i*BS:((i+1)*BS)])[0] for i in range(VALS_W)
+        ])
+        f = getFFT(VALS)
         afft = f/VALS_MAX
-        for c in map(BarF, afft):
+        #afft = DynNorm(f)
+        afft = np.clip(afft, 0.0, 1.0) # clip for BafFU
+        for c in map(BarFU, afft):
             sys.stdout.buffer.write(c.encode("utf-8"))
         sys.stdout.write('\n')
         sys.stdout.buffer.flush()
-
 
 if __name__ == "__main__":
     if len(sys.argv)>1:
