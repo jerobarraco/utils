@@ -183,7 +183,6 @@ The real documentation is the code. :)
 # Want to do
 Stuff i'd like to do at some point if i get to:
 
-* make ue shadercompiler work
 * test on amazon ec2 instances
 * test a "cloud pc rental service" (don't wanna give names) when possible.
 * support windows shadowing, maybe...
