@@ -1,0 +1,9 @@
+#!/bin/bash
+#export DOTNET_ROOT=/home/nande/Unity/Hub/Editor/2020.3.19f1/Editor/Data/NetCore/Sdk-2.2.107/
+#export UNITY_WIN=/home/nande/.local/share/unity3d/cache/sysroots/windows-x86_64-linux-x86_64/llvm-9.0.0-1/bin
+#export PATH=$PATH:$DOTNET_ROOT:$UNITY_WIN
+#~/bin/JetBrains\ Rider-2022.1.1/bin/rider.sh
+#export JAVA_HOME=/home/nande/bin/android-studio-4.0.2/jre
+pushd /home/nande/work/UE5.4
+./Engine/Binaries/Linux/UnrealEditor
+

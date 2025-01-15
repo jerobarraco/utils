@@ -1,0 +1,23 @@
+#!/bin/bash
+# converts an mp3 and image to video using ffmpeg
+# https://superuser.com/a/1499738/204468
+# https://stackoverflow.com/questions/62756006/how-to-create-video-from-audio-files-using-ffmpeg
+# https://superuser.com/questions/843774/create-a-video-file-from-an-audio-file-and-add-visualizations-from-audio#843834
+
+# -ab 192k
+outfile="${1%.*}.mp4"
+echo audio $1
+echo img $2
+echo outfile $outfile
+
+#ffmpeg -i "$1" -acodec libmp3lame -q:a 2 -map_metadata 0 $outfile
+
+
+#ffmpeg -i "$1" -i "$2" -c:v libx264 -tune stillimage -c:a libmp3lame -q:a 2 -map_metadata 0 "$outfile"
+
+#https://superuser.com/a/1041818/204468
+ffmpeg -loop 1 -i "$2" -i "$1" -map_metadata 1 -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest "$outfile"
+
+touch -r "$1" "$outfile"
+
+

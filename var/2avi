@@ -1,0 +1,4 @@
+#!/bin/bash
+avconv -y -i "$1" -pass 1 -c:v mpeg4 -vtag xvid -c:a copy -q:v 5 -f avi /dev/null
+avconv -y -i "$1" -pass 2 -c:a libmp3lame -q:a 5 -c:v mpeg4 -vtag xvid -q:v 5 -s:v hd480 -f avi "$1.avi"
+#avconv -i "$1" -acodec libmp3lame -ab 128k "$1.avi"

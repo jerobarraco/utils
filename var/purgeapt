@@ -1,0 +1,3 @@
+#!/bin/bash
+sudo aptitude purge '~c'
+#aptitude purge ?config-files

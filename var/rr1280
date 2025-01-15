@@ -1,0 +1,10 @@
+#!/bin/sh
+#ffmpeg -f alsa -ac 2 -i pulse -f x11grab -r 10 -s 800x600 -i :0.0 -acodec pcm_s16le -vcodec libx264 -preset ultrafast -threads 3 sillyexp.avi
+#ffmpeg -f alsa -ac 2 -i pulse -f x11grab -r 10 -s 1024x768 -i :0.0 -acodec libmp3lame -ab 128k -vcodec libx264 -preset ultrafast -threads 3 sillyexp.avi
+#ffmpeg -f alsa -ac 2 -i pulse -f x11grab -r 10 -s 1024x768 -i :0.0 -acodec libmp3lame -ab 128k -vcodec libx264 -preset ultrafast -crf 0 -threads 4 screen.avi
+#ffmpeg -f alsa -ac 2 -i pulse -f x11grab -r 15 -s $(xwininfo -root | grep 'geometry' | awk '{print$2;}') -i :0.0 -acodec libmp3lame -ab 128k -vcodec libx264 -preset ultrafast -threads 4 rec.mkv
+#pacmd load-module module-loopback
+#pavucontrol&
+#ffmpeg -f x11grab -r 10 -s 1280x720 -i :0.0 -f pulse -ac 2 -i default -acodec libmp3lame -ab 128k -vcodec libx264 -crf 15 -threads 3 $1.mkv
+avconv -f x11grab -r 20 -s 1280x720 -i :0.0 -f pulse -ac 2 -i default -acodec libmp3lame -ab 128k -vcodec libx264 -crf 15 -threads 3 $1.mkv
+

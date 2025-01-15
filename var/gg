@@ -1,0 +1,6 @@
+#!/bin/bash
+
+gource "$1" -s 0.5 --user-image-dir ./images/ --title "$2" --font-size 22 --font-colour FFFF00  --logo logo.png \
+--hide progress --camera-mode overview --stop-at-end -1920x1080 --multi-sampling --auto-skip-seconds .1 \
+--output-framerate 60 --output-ppm-stream - |\
+ffmpeg -y -r 60 -f image2pipe -vcodec ppm -i - -vcodec libx264 -preset fast -pix_fmt yuv420p -crf 1 -threads 3 -bf 0 gource.mp4

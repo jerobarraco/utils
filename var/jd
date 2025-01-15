@@ -1,0 +1,6 @@
+#!/bin/bash
+pushd /home/nande/bin/jdown/ || exit 1
+# https://askubuntu.com/a/1100193/264797
+java -jar -Dsun.java2d.uiScale=2.0 JDownloader.jar
+#java -jar JDownloader.jar
+exit $?

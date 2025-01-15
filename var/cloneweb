@@ -1,0 +1,6 @@
+#!/bin/bash
+#wget --limit-rate=500k --no-clobber --convert-links --random-wait -r -p -E -e robots=off -U mozilla $1
+wget --restrict-file-names=windows --limit-rate=800k --mirror --level=100 --convert-links --html-extension --continue --page-requisites -N -r -p -E -e robots=off --header="Accept: text/html" --user-agent="Mozilla/5.0 (BlackBerry; U; BlackBerry 9300; it) AppleWebKit/534.8+ (KHTML, like Gecko) Version/6.0.0.666 Mobile Safari/534.8+" --random-wait --reject "*/search/*","*search@*","*search?*" -X 'search' $1 
+#wget --restrict-file-names=windows --limit-rate=200k --mirror --level=100 --convert-links --html-extension --continue --page-requisites -N -r -p -E -e robots=off --header="Accept: text/html" --user-agent="Mozilla/5.0 (iPhone; CPU iPhone OS 7_0 like Mac OS X; en-us) AppleWebKit/537.51.1 (KHTML, like Gecko) Version/7.0 Mobile/11A465 Safari/9537.53" --random-wait --reject "search@*" --reject "search?*" $1 
+#wget --wait=1 --recursive --level=10 --convert-links --html-extension --no-clobber --page-requisites -U "Mozilla/5.0 (X11; U; Linux; en-US; rv:1.9.1.16) Gecko/20110929 Firefox/3.5.16" --random-wait --no-parent 
+#--no-clober doesnt work with convert links

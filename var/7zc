@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	echo "Target not specified";
+	exit 1;
+fi
+
+target=${1%/}
+7z a -r $target.7z $target

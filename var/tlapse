@@ -1,0 +1,2 @@
+#!/bin/bash
+ffmpeg -threads 2 -i "$1" -an -filter:v "setpts=0.01*PTS" "$1_lapse.mp4"

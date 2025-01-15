@@ -1,0 +1,8 @@
+#!/bin/bash
+#mount /mnt/bb/sd
+#rsync -avzh --exclude=".directory"  --exclude=".debris" --progress --delete /home/nande/Music/Favoritos/ /mnt/bb/sd/music/Favoritos/
+#rsync -rltzuv --exclude=".directory"  --exclude=".debris" --progress --delete /home/nande/Music/Favoritos/ /media/nande/MMC1/music/Favoritos/
+#rsync -rutWmv --inplace --progress --no-perms --no-owner --no-group --safe-links --exclude=".directory"  --exclude=".debris" --progress --delete /home/nande/Music/Favoritos/ /media/nande/MMC1/music/Favoritos/
+#mount /mnt/bb/sd
+
+cp -ruv ~/Music/Favoritos/ /media/jeronimo/PHONE/music/

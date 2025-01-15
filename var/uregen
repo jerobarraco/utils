@@ -1,0 +1,2 @@
+#!/bin/bash
+/home/nande/work/UE5.4/Engine/Build/BatchFiles/Linux/./GenerateProjectFiles.sh $1 -rider

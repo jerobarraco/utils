@@ -1,0 +1,7 @@
+#!/bin/sh
+if [ ! -f /tmp/brgght ]; then
+	touch /tmp/brgght
+	ddcutil -d 1 setvcp 10 - 10 
+	#ddcutil -d 2 setvcp 10 - 10 
+	rm /tmp/brgght
+fi

@@ -1,0 +1,30 @@
+#!/bin/bash
+api="apikey"
+fullfile="$1"
+base=$(basename "$fullfile")
+extension="${base##*.}"
+filename="${base%.*}"
+# outfile="${filename}_tiny.${extension}"
+outfile="${filename}.${extension}"
+curlcmd="https://api.tinify.com/shrink --user api:$api --dump-header /dev/stdout --output /dev/null --data-binary @$base"
+notifyKey="string:x-canonical-private-synchronous:"
+notifyTitle="Tinyfying!"
+#### start
+notify-send "$notifyTitle" "Tinyfiying: '$base', please wait..." --icon="$fullfile" -h int:value:30 -h "${notifyKey}"
+
+result=$(curl $curlcmd)
+echo "result:
+$result"
+
+location=$(echo "$result" | cut -d$'\n' -f9)
+url=$(echo "$location" | cut -d: -f3 | sed s'/.$//')
+
+echo "location: $location"
+echo "$url"
+
+notify-send "$notifyTitle" "Saving to: '$outfile'" --icon="$fullfile" -h int:value:50 -h "${notifyKey}"
+
+curl -L "https:$url" --user api:$api --output "$outfile"
+
+fullOut="$(pwd)/$outfile"
+notify-send "$notifyTitle" "Done!\n<a href=\"file://${fullOut}\"/>$fullOut</a>" --icon="$fullOut" -h "${notifyKey}"

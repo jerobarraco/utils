@@ -1,0 +1,5 @@
+#!/bin/bash
+#mount -o noatime,discard,ssd,space_cache,compress=zlib,subvolid=0 /dev/sdb1 /mnt/r
+#umount /mnt/r
+mount /mnt/r
+mount /mnt/rd

@@ -1,0 +1,8 @@
+#!/bin/sh
+# https://itsfoss.community/t/setting-monitors-brightness-on-desktop-ddcutil/10345
+if [ ! -f /tmp/brgght ]; then
+	touch /tmp/brgght
+	ddcutil -d 1 setvcp 10 + 10 
+	#ddcutil -d 2 setvcp 10 + 10 
+	rm /tmp/brgght
+fi

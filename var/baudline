@@ -1,0 +1,4 @@
+#!/bin/bash
+
+parec --channels=2 --latency-msec=5 --format=s16le | ~/bin/baudline_1.08_linux_x86_64/baudline -stdin -channels 2 -format le16 -fftsize 128 -samplerate 44100 -session baudnormal
+

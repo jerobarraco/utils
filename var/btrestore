@@ -1,0 +1,14 @@
+# take a read-only snapshot:
+btrfs sub snap -r fs snapshot
+
+... do things on fs
+
+# rolling back:
+btrfs sub del fs # at which point you'll lose those things you've done
+                 # if you want to preserve them, just rename fs instead
+
+btrfs sub snap snapshot fs # reinstate snapshot as a read+write fs
+btrfs sub del snapshot # delete the non-longer needed read-only snapshot
+
+#!/bin/bash
+btrfs subvolume snapshot -r /lib/live/mount/persistence/sdb2  /lib/live/mount/persistence/sdb2/$1

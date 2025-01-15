@@ -1,0 +1,17 @@
+#!/bin/bash
+# https://superuser.com/a/150757/204468
+echo Run from a directory on the filesystem you want to wipe
+echo Creating small file
+ionice -c3 dd if=/dev/zero  | pv -s 100M | dd of=zero.small.file bs=1024 count=102400
+
+echo ''
+echo 'Creating rest of file, warning: if file "zero.file" already exists it will get appended!'
+
+ionice -c3 dd if=/dev/zero | pv -s $(($(stat -f --format="%a*%S" .))) | dd of=zero.file bs=1024 oflag=append conv=notrunc
+# status=progress
+sync ; sleep 60 ; sync
+echo "Deleting small file"
+rm zero.small.file
+echo "Deleting big file"
+rm zero.file
+# the purpose of the small file is to reduce the time when free space is completely zero; the purpose of sync is to make sure the data is actually written.

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+bleachbit
+#sudo -u osi8 bleachbit
+btmr
+btrfs subvolume snapshot -r /mnt/r/@  /mnt/r/$1
+btrfs subvolume snapshot -r /mnt/rd/@var  /mnt/rd/$1

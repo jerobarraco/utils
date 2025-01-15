@@ -1,0 +1,2 @@
+#!/bin/bash
+mount -o remount,noatime,discard,ssd,space_cache,compress=zlib /dev/sdb2

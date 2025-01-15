@@ -1,0 +1,3 @@
+#!/bin/bash
+# https://calibre-ebook.com/download_linux
+wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin install_dir=~/bin/calibre-bin isolated=y

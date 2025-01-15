@@ -1,0 +1,6 @@
+#!/bin/bash
+ffmpeg -framerate .5 -f x11grab -s 1920x1080 -i :0.0 -vf settb=\(1/10\),setpts=N/TB/10 -r 10 -c:v libx264 -crf 0 -f flv out.flv
+
+#ffmpeg -framerate 1 -f x11grab -s 1920,1080 -i :0.0+0,0 -vf settb=\(1/30\),setpts=N/TB/30 -r 30 -vcodec libx264 -crf 0 -preset ultrafast -threads 0 out.mkv
+
+#ffmpeg -framerate 1 -f x11grab -s 1920,1080 -i :0.0+0,0 -vf settb=\(1/30\),setpts=N/TB/30 -r 30 -vcodec libx264 -crf 0 -preset ultrafast -threads 0 out.mkv

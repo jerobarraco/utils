@@ -1,0 +1,3 @@
+#!/bin/bash
+btrfs subvolume delete -c /mnt/r/$1
+btrfs subvolume delete -c /mnt/rd/$1

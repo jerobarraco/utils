@@ -1,0 +1,2 @@
+#!/bin/bash
+btrfs filesystem defrag -v -r -f -czstd $1

@@ -1,0 +1,3 @@
+#!/bin/bash
+sudo ionice -c 3 nice -10 btrfs scrub start -Bd $1
+

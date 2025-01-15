@@ -1,0 +1,5 @@
+#!/bin/bash
+#wdbg &
+#cd ~/work/swb
+python3 -m http.server
+
