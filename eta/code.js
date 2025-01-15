@@ -9,7 +9,7 @@ var _eta = {
 	objective: 0,
 	count: 0,
 	offset: 0,
-	off_objective: 0,
+	off_objective: 0, // objective minus the offset
 	off_count: 0,
 	st: 0, //start time
 	duration: 0, //duration (sum)
@@ -53,18 +53,18 @@ var _eta = {
 	],
 	SEPARATOR: "----------------------------------------<br/>",
 	/// Core functions
-	ClearTimer(){
+	ClearTimer() {
 		clearTimeout(_eta.timer);
 		_eta.timer = 0;
 	},
-	Stop(){
+	Stop() {
 		_eta.ClearTimer();
 		_eta.SetCountBtnText("Continue");
 		// don't change reset to start, as it actually clicking it will still reset
 	},
-	Tick(){
+	Tick() {
 		_eta.ClearTimer();
-    	// done at the start to avoid adding a delay
+		// done at the start to avoid adding a delay
 		_eta.timer = setTimeout(_eta.Tick, _eta.to);
 
 		let n = +(new Date());
@@ -84,9 +84,14 @@ var _eta = {
 		_eta.Tick(); // will do Show properly, as it updates the values.
 		_eta.ShowSlow();
 
-		 // notice stop below the tick above
+		// notice stop below the tick above
 		if(_eta.count >= _eta.objective)
-		 	_eta.Stop(); // stop when target reached
+			_eta.Stop(); // stop when target reached
+	},
+	SetOffset(val) {
+		// it's better to call this before SetCount
+		_eta.offset = val;
+		_eta.off_objective = _eta.objective - _eta.offset;
 	},
 	SetCount(val) {
 		// Sets count, off_count, and average. Duration needs to be set first
@@ -96,14 +101,14 @@ var _eta = {
 		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count); // notice it collides with load
 		// the rest of the values are set on Tick
 	},
-	Count(){
+	Count() {
 		//start if never started
 		if (_eta.st==0){
 			_eta.Reset();
 			return;
 		}
 
-		// restart the timer if its stopped
+		// restart the timer if it's stopped
 		if(_eta.timer == 0) {
 			_eta.TryTick();
 			_eta.SetCountBtnText("Count");
@@ -121,10 +126,19 @@ var _eta = {
 		_eta.TryTick();
 
 		// on count set load's count value
-		_eta.SetDocValue(_eta.ELEMENTS.count,  _eta.count);
+		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count);
 		// and last ms
 		_eta.SetDocValue("last_ms", _eta.l)
 		_eta.SaveToUrl(); // write url
+	},
+	Skip() {
+		_eta.SetOffset(_eta.offset+1);
+		_eta.SetCount(_eta.count+1); // update the other values
+		
+		_eta.TryTick();
+
+		_eta.SetDocValue(_eta.ELEMENTS.offset, _eta.offset);
+		_eta.SaveToUrl();
 	},
 	Restart() {
 		// Reset using the document, but not the re/load part. Sets the rest to initial value.
@@ -137,10 +151,9 @@ var _eta = {
 		_eta.cd = 0;//current duration (last dur)
 		_eta.ca = 0;//current avg
 		_eta.ce = 0;//current eta
-		_eta.offset = _eta.GetDocIntValue(_eta.ELEMENTS.offset);
-		_eta.SetCount(_eta.offset);
 		_eta.objective = _eta.GetDocIntValue(_eta.ELEMENTS.objective);
-		_eta.off_objective = _eta.objective - _eta.offset;
+		_eta.SetOffset(0);
+		_eta.SetCount(0);
 		_eta.to = _eta.GetDocIntValue("toms");
 		_eta.l = +new Date(); //last: gets current milliseconds. meh
 		_eta.st = _eta.l; //start ms
@@ -151,6 +164,7 @@ var _eta = {
 		// beware conflicts with load
 		document.getElementById(_eta.ELEMENTS.start).value = _eta.st;
 		_eta.SetDocValue(_eta.ELEMENTS.count, _eta.count); // notice it collides with load
+		_eta.SetDocValue(_eta.ELEMENTS.offset, _eta.offset);
 		// not saving to url here because it will mess with load, and reset
 
 		//update ui and start ticking
@@ -184,15 +198,15 @@ var _eta = {
 		}
 		_eta.duration = (_eta.l - _eta.st);
 
-		// load count
-		_eta.SetCount(c);
+		let off = _eta.GetDocIntValue(_eta.ELEMENTS.offset) || 0;
+		_eta.SetOffset(off);
+		_eta.SetCount(c); // load count
 
 		_eta.ld = _eta.a;
 
 		// update ui
-		_eta.SaveToUrl();
 		_eta.TryTick();
-		_eta.ShowSlow();
+		_eta.SaveToUrl();
 	},
 	/// Utility function
 	MS2TD(v, simple){
@@ -290,9 +304,10 @@ var _eta = {
 			let i = Math.floor(partial * cP.length);
 			b += cP[i];
 		}
-		if (empty>=0) {
+
+		if (empty>=0)
 			b += cE.repeat(empty);
-		}
+
 		return b;
 	},
 	// UI functions
@@ -347,7 +362,7 @@ var _eta = {
 	GetDocIntValue(el) {
 		return parseInt(document.getElementById(el).value, 10);
 	},
-	// Save load functions`
+	// Save load functions
 	LoadFromUrl() {
 		let params = new URLSearchParams(document.location.search.substring(1));
 		let c = parseInt(params.get("c"), 10); // start count
