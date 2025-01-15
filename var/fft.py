@@ -19,18 +19,18 @@ cls = lambda: print("\033c\033[3J", end='')
 
 def Bar(v):
     cv = min(1.0, max(0.0, v))
-    return BARS[int(cv * MAX_B)]
+    return BARS[round(cv * MAX_B)]
 
 def SBar(vals):
     return "".join(map(Bar, vals))
 
 def BarF(v):
     cv = min(1.0, max(0.0, v))
-    return BARSF[int(cv * MAX_BF)]
+    return BARSF[round(cv * MAX_BF)]
 
 def BarFU(v):
     """unsafe, but optimized version, v MUST be between 0 and 1"""
-    return BARSF[int(v * MAX_BF)]
+    return BARSF[round(v * MAX_BF)]
 
 def SBarF(vals):
     return "".join(map(BarF, vals))
