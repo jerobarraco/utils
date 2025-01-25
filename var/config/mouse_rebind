@@ -1,0 +1,30 @@
+https://askubuntu.com/questions/785349/remap-power-button-on-mouse-using-x
+
+xinput list
+get name from the list
+
+xinput test 13 (id)
+get buttons from the test
+
+edit input and add a section like this
+nano /etc/X11/xorg.conf.d/40-libinput.conf 
+Section "InputClass"
+        Identifier "ELECOM TrackBall Mouse DEFT Pro TrackBall Mouse"
+        MatchProduct "ELECOM TrackBall Mouse DEFT Pro TrackBall Mouse"
+        Driver "libinput"
+        #Option "Scrollmethod" "button"
+        #Option "ScrollButton" "12" # Designates a button as scroll button. If the ScrollMethod is button and the button is logically down, x/y axis movement is converted into scroll events.
+        #Option "DragLockButtons" "10 1"
+        #Option "HorizontalScrolling" "False"
+        #Option "ButtonMapping" "1 2 3 4 5 6 7 8 9 10 11 12"
+        Option "ButtonMapping" "1 11 3 4 5 6 7 8 9 10 2 12"
+        # map the extra button as middle button, the middle button as the extra button
+EndSection
+
+
+
+
+see also
+https://wiki.robotz.com/index.php/Linux_Tools_to_Remap_Keys_and_Mouse_Buttons
+https://help.ubuntu.com/community/MouseCustomizations
+
