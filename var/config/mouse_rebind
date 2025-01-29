@@ -28,3 +28,6 @@ see also
 https://wiki.robotz.com/index.php/Linux_Tools_to_Remap_Keys_and_Mouse_Buttons
 https://help.ubuntu.com/community/MouseCustomizations
 
+
+xev | grep button
+https://spetriuk.github.io/linux/how-to/Mouse%20Buttons%20Bind%20To%20Keyboard%20Keys%20Or%20Commands/
