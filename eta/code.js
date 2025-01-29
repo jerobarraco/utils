@@ -92,6 +92,7 @@ var _eta = {
 		// it's better to call this before SetCount
 		_eta.offset = val;
 		_eta.off_objective = _eta.objective - _eta.offset;
+		_eta.SetDocValue(_eta.ELEMENTS.offset, _eta.offset); // notice it collides with load
 	},
 	SetCount(val) {
 		// Sets count, off_count, and average. Duration needs to be set first
@@ -136,8 +137,6 @@ var _eta = {
 		_eta.SetCount(_eta.count+1); // update the other values
 		
 		_eta.TryTick();
-
-		_eta.SetDocValue(_eta.ELEMENTS.offset, _eta.offset);
 		_eta.SaveToUrl();
 	},
 	Restart() {
@@ -177,11 +176,13 @@ var _eta = {
 		_eta.SaveToUrl();
 	},
 	Load() {
-		// Loads from document. LoadFromUrl calls this.
+		// Loads from document inputs. LoadFromUrl calls this.
+		// this calls reset, so its important to cachu the values first
 
 		// cache sms and count because "restart" will override it with last (aka now)
 		let sms = _eta.GetDocIntValue(_eta.ELEMENTS.start) || 0;
 		let c = _eta.GetDocIntValue(_eta.ELEMENTS.count) || 0;
+		let off = _eta.GetDocIntValue(_eta.ELEMENTS.offset) || 0;
 
 		// Reinitialize
 		_eta.Restart();
@@ -198,7 +199,7 @@ var _eta = {
 		}
 		_eta.duration = (_eta.l - _eta.st);
 
-		let off = _eta.GetDocIntValue(_eta.ELEMENTS.offset) || 0;
+		
 		_eta.SetOffset(off);
 		_eta.SetCount(c); // load count
 
@@ -367,11 +368,11 @@ var _eta = {
 		let params = new URLSearchParams(document.location.search.substring(1));
 		let c = parseInt(params.get("c"), 10); // start count
 		let o = parseInt(params.get("o"), 10); // objective
-		let of = parseInt(params.get("of"), 10) || 0; // objective
+		let of = parseInt(params.get("of"), 10) || 0; // offset
 		let sms = parseInt(params.get("s"), 10); // start ms
 		let lms = parseInt(params.get("l"), 10); // last ms
 		let toms = parseInt(params.get("to"), 10) || 1000; // refresh rate
-		let bar = parseInt(params.get("b"), 10); // bar style
+		let bar = parseInt(params.get("b"), 10) || 0; // bar style
 		let nt = params.get("tt");
 
 		if (isNaN(c) || isNaN(sms) || isNaN(o)) return; // we need this

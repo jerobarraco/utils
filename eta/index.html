@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 <!-- Copyright 2015-2022 Jerónimo Barraco Mármol GPL v3 -->
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
@@ -27,6 +27,7 @@ Refresh (ms)<br/>
 <input type="button" id="b_reset" name="name" value="Restart" onclick="_eta.Reset()"/>
 <br/>
 ----------------[RE]LOAD----------------<br/>
+<!-- note that inputs here need to be cached in .load since it also calls reset. -->
 Count <input type="number" id="count" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
 <br/>
 Skipped <input type="number" id="offset" value="0" max="9999999999999999999999999999999999999999999999999999999999999999"/>
