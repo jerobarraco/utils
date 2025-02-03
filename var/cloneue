@@ -1,0 +1,2 @@
+#!/bin/bash
+git clone --single-branch --depth 1 --branch 5.4 git@github.com:EpicGames/UnrealEngine.git ./UE5.4

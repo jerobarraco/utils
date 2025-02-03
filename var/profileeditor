@@ -1,0 +1,1 @@
+/home/nande/work/UE5.1/Engine/Binaries/Linux/UnrealEditor -trace=default,memory /home/nande/work/proj/Proj.uproject

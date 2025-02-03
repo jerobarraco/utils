@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration xmlns="https://www.unrealengine.com/BuildConfiguration">
+    <BuildConfiguration>
+        <!--
+            <MaxParallelActions>6</MaxParallelActions>
+            <bUseUnityBuild>false</bUseUnityBuild>
+        -->
+		<MaxParallelActions>32</MaxParallelActions>
+		<bAllCores>true</bAllCores>
+<!-- https://dev.epicgames.com/community/learning/tutorials/9dv9/unreal-engine-disable-ubasessionserver-uba -->
+			<bAllowUBAExecutor>false</bAllowUBAExecutor>
+			<bAllowUBALocalExecutor>false</bAllowUBALocalExecutor>
+	</BuildConfiguration>
+
+    <ParallelExecutor>
+        <MemoryPerActionBytes>1230.0</MemoryPerActionBytes><!--1.2gib-->
+        <!--<MaxProcessorCount>1</MaxProcessorCount>
+        <MemoryPerActionBytes>200.0</MemoryPerActionBytes>
+
+        <ProcessorCountMultiplier>2</ProcessorCountMultiplier> -->
+        <bStopCompilationAfterErrors>false</bStopCompilationAfterErrors>
+        <bShowCompilationTimes>true</bShowCompilationTimes>
+        <bShowPerActionCompilationTimes>true</bShowPerActionCompilationTimes>
+        <ProcessPriority>Normal</ProcessPriority>
+    </ParallelExecutor>
+</Configuration>
